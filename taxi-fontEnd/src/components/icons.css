@@ -1,0 +1,50 @@
+/* src/components/icons.css */
+
+/* Class chung cho Icon */
+.icon {
+    display: inline-block;
+    vertical-align: middle;
+    /* currentColor giúp icon nhận màu từ text color của phần tử cha */
+    stroke: currentColor; 
+    fill: none;
+}
+
+.icon.fill-current {
+    fill: currentColor;
+    stroke: none;
+}
+
+/* Kích thước Icon */
+.icon-sm { width: 16px; height: 16px; } /* Tương đương h-4 w-4 */
+.icon-md { width: 20px; height: 20px; } /* Tương đương h-5 w-5 */
+.icon-lg { width: 24px; height: 24px; } /* Tương đương h-6 w-6 */
+
+/* --- Status Icon (Dấu chấm tròn trạng thái) --- */
+.status-dot {
+    display: inline-block;
+    width: 12px;  /* h-3 */
+    height: 12px; /* w-3 */
+    border-radius: 50%;
+}
+
+.status-green { background-color: #22c55e; }
+.status-yellow { background-color: #eab308; }
+.status-red { background-color: #ef4444; }
+.status-gray { background-color: #6b7280; }
+
+/* --- Loading Spinner --- */
+.spinner {
+    animation: spin 1s linear infinite;
+    color: currentColor; /* Thường là white khi nằm trong button */
+}
+
+.spinner circle { opacity: 0.25; }
+.spinner path { opacity: 0.75; }
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* --- Google Icon Colors --- */
+/* (Google Icon dùng màu trực tiếp trong SVG nên không cần class màu) */

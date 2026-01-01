@@ -1,0 +1,311 @@
+/* src/App.css */
+
+/* --- Biến toàn cục (Theme) --- */
+:root {
+    --bg-body: #f3f4f6;
+    --bg-sidebar: #ffffff;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --border-color: #e5e7eb;
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --active-bg: #2563eb;
+    --active-text: #ffffff;
+    --hover-bg: #f3f4f6;
+}
+
+/* Dark Mode Variables */
+.dark {
+    --bg-body: #111827;
+    --bg-sidebar: #1f2937;
+    --text-primary: #f9fafb;
+    --text-secondary: #9ca3af;
+    --border-color: #374151;
+    --hover-bg: #374151;
+}
+
+/* Make form controls readable: force input/textarea/select and form elements to use dark text and friendly placeholder */
+input,
+textarea,
+select,
+.form-input,
+.form-textarea,
+.form-select {
+    color: #111827; /* black for typed text */
+}
+
+input::placeholder,
+textarea::placeholder,
+.form-input::placeholder,
+.form-textarea::placeholder {
+    color: #6b7280; /* muted dark placeholder */
+    opacity: 1;
+}
+
+/* --- Layout App --- */
+/* Laptop frame wrapper (full screen) */
+.laptop-frame {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.20));
+    overflow-x: hidden; /* no horizontal scroll at frame level */
+}
+
+.laptop-screen {
+    width: 92vw;
+    height: 92vh;
+    max-width: 1400px;
+    max-height: 900px;
+    background-color: var(--bg-body);
+    border-radius: 14px;
+    box-shadow: 0 24px 48px rgba(2,6,23,0.45);
+    border: 8px solid #111; /* emulate bezel/frame */
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+    overflow-x: hidden; /* guard against internal overflows */
+}
+
+/* Fullscreen on larger (laptop) screens */
+@media (min-width: 1200px) {
+    .laptop-screen {
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        border: 0;
+        box-shadow: none;
+    }
+}
+
+.app-container {
+    overflow-x: hidden; /* ensure app content doesn't cause page scroll */
+} 
+
+.app-container {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    background-color: var(--bg-body);
+    color: var(--text-primary);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: hidden; /* Ngăn scroll body chính */
+}
+
+/* --- Sidebar --- */
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 999;
+    width: 280px; /* mobile / default */
+    max-width: 40%;
+    box-sizing: border-box;
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out, width 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+    .sidebar { width: 320px; flex: 0 0 320px; }
+}
+
+/* Hiển thị sidebar trên desktop */
+@media (min-width: 1024px) {
+    .sidebar {
+        position: relative;
+        transform: translateX(0);
+    }
+}
+
+/* Toggle Sidebar Mobile */
+.sidebar.open {
+    transform: translateX(0);
+}
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 16px;
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+}
+
+.app-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin: 0;
+}
+
+.btn-close-sidebar {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: none; /* Ẩn trên desktop */
+}
+
+@media (max-width: 1023px) {
+    .btn-close-sidebar { display: block; }
+}
+
+/* Logout button styles */
+.btn-logout {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-logout:hover { background-color: var(--hover-bg); }
+
+.btn-logout-mobile {
+    display: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+@media (max-width: 1023px) {
+    .btn-logout-mobile { display: inline-block; }
+}
+/* Navigation Links */
+.nav-menu {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-align: left;
+    background-color: transparent;
+    color: var(--text-secondary);
+}
+
+.nav-item:hover {
+    background-color: var(--hover-bg);
+}
+
+.nav-item.active {
+    background-color: var(--active-bg);
+    color: var(--active-text);
+}
+
+.nav-icon {
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+}
+
+/* Theme Toggle Button */
+.theme-toggle-container {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background-color: transparent;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+}
+
+.btn-theme-toggle:hover {
+    background-color: var(--hover-bg);
+}
+
+/* --- Main Content Area --- */
+.main-content {
+    flex: 1;
+    min-width: 0; /* allow to shrink and avoid horizontal overflow */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Allow scrollable page content to not force parent width */
+.page-scroll-container {
+    min-width: 0;
+}
+
+/* Header Mobile */
+.mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background-color: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-color);
+}
+
+@media (min-width: 1024px) {
+    .mobile-header { display: none; }
+}
+
+.btn-menu {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+/* Page Content Scrollable Area */
+.page-scroll-container {
+    flex: 1;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+@media (min-width: 768px) {
+    .page-scroll-container { padding: 24px; }
+}
+
+@media (min-width: 1024px) {
+    .page-scroll-container { padding: 32px; }
+}

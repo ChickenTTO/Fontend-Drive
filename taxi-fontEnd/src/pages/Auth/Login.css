@@ -1,0 +1,87 @@
+/* src/pages/Auth/Login.css */
+
+.login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh; /* Full màn hình */
+    background-color: #f3f4f6; /* Gray-100 */
+    width: 100%;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 450px;
+    padding: 32px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 24px; /* Space-y-8 tương đương gap lớn */
+}
+
+.login-title {
+    font-size: 28px; /* text-3xl */
+    font-weight: bold;
+    color: #2563eb; /* Primary-600 (Blue) */
+    margin: 0;
+}
+
+.login-subtitle {
+    color: #4b5563; /* Gray-600 */
+    margin: 0;
+    font-size: 16px;
+}
+
+.login-actions {
+    margin-top: 8px;
+}
+
+.google-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151; /* Gray-700 */
+    background-color: white;
+    border: 1px solid #d1d5db; /* Gray-300 */
+    border-radius: 6px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    gap: 8px; /* Khoảng cách giữa icon và text */
+}
+
+.google-btn:hover {
+    background-color: #f9fafb; /* Gray-50 */
+}
+
+.google-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6; /* Ring primary */
+}
+
+/* --- Dark Mode (Nếu ứng dụng có hỗ trợ) --- */
+/* Khi class 'dark' được thêm vào body hoặc html */
+:global(.dark) .login-container {
+    background-color: #111827; /* Gray-900 */
+}
+
+:global(.dark) .login-card {
+    background-color: #1f2937; /* Gray-800 */
+    box-shadow: none;
+    border: 1px solid #374151;
+}
+
+:global(.dark) .login-title {
+    color: #60a5fa; /* Primary-400 */
+}
+
+:global(.dark) .login-subtitle {
+    color: #d1d5db; /* Gray-300 */
+}

@@ -1,24 +1,14 @@
-// Simple vehicle API wrapper using fetch
-// Assumes a proxy or same origin for /api
+import axiosClient from "./axiosClient";
 
-export async function deleteVehicle(id) {
-  const res = await fetch(`/api/vehicles/${id}`, {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  });
+const vehicleApi = {
+  getAll: (params) => axiosClient.get("/vehicles", { params }),
+  getById: (id) => axiosClient.get(`/vehicles/${id}`),
+  create: (data) => axiosClient.post("/vehicles", data),
+  update: (id, data) => axiosClient.put(`/vehicles/${id}`, data),
+  delete: (id) => axiosClient.delete(`/vehicles/${id}`),
+  addMaintenance: (id, data) => axiosClient.post(`/vehicles/${id}/maintenance`, data),
+  getMaintenanceHistory: (id) => axiosClient.get(`/vehicles/${id}/maintenance`),
+  getRevenue: (id) => axiosClient.get(`/vehicles/${id}/revenue`),
+};
 
-  if (!res.ok) {
-    let errorMsg = 'Failed to delete vehicle';
-    try {
-      const j = await res.json();
-      errorMsg = j.message || errorMsg;
-    } catch (e) {}
-    const err = new Error(errorMsg);
-    err.status = res.status;
-    throw err;
-  }
-
-  return await res.json();
-}
+export default vehicleApi;

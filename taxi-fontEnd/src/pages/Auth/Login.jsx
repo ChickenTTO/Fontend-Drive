@@ -1,45 +1,86 @@
-import React, { useState } from 'react';
-import './Login.css';
-// Import Icons (Đường dẫn tùy thuộc vào cấu trúc thực tế của bạn, giả định là components/icons)
-import { GoogleIcon } from '../../components/icons';
+import React, { useState } from "react";
+import "./Login.css";
+import { GoogleIcon } from "../../components/icons";
+import authApi from "../../api/authApi";
 
 const Login = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!username || !password) {
-      setError('Vui lòng nhập tên đăng nhập và mật khẩu');
+      setError("Vui lòng nhập tên đăng nhập và mật khẩu");
       return;
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-      const data = await res.json();
+      // Gọi API login
+      const res = await authApi.login({ username, password });
 
-      if (!res.ok) {
-        setError(data.message || 'Đăng nhập thất bại');
-        setLoading(false);
-        return;
+      // Debug: log response
+      console.log("LOGIN RESPONSE:", res);
+
+      // Parse token linh hoạt
+      let token = null;
+      let message = "";
+
+      if (res?.token) {
+        token = res.token;
+      } else if (res?.data?.token) {
+        token = res.data.token;
+      } else if (res?.accessToken) {
+        token = res.accessToken;
+      } else if (res?.data?.accessToken) {
+        token = res.data.accessToken;
+      } else if (res?.success === false) {
+        message = res.msg || res.message || "Đăng nhập thất bại";
+      } else if (res?.msg) {
+        message = res.msg;
       }
 
-      // Lưu token vào localStorage (hoặc tuỳ theo cơ chế auth của bạn)
-      if (data.token) localStorage.setItem('authToken', data.token);
+      if (token) {
+        // Save token with consistent key
+        localStorage.setItem("authToken", token);
+        
+        // Also save to other keys for compatibility
+        localStorage.setItem("token", token);
+        
+        // Save user info if available
+        const user = res?.user || res?.data?.user;
+        if (user) {
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+        
+        console.log("✅ Token saved successfully");
+        
+        // Call onLogin callback
+        if (onLogin) {
+          onLogin();
+        }
+      } else {
+        setError(message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+      }
 
-      // Kích hoạt callback onLogin để App.jsx chuyển trang
-      if (onLogin) onLogin();
     } catch (err) {
-      setError('Có lỗi xảy ra, thử lại sau');
+      console.error("LOGIN ERROR:", err);
+      
+      let errorMsg = "Có lỗi xảy ra, thử lại sau";
+      
+      if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.response?.data?.msg) {
+        errorMsg = err.response.data.msg;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -79,14 +120,18 @@ const Login = ({ onLogin }) => {
           {error && <div className="error-text">{error}</div>}
 
           <button className="login-btn" type="submit" disabled={loading}>
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
           </button>
         </form>
 
         <div className="divider">Hoặc</div>
 
         <div className="login-actions">
-          <button onClick={onLogin} className="google-btn">
+          <button 
+            type="button"
+            onClick={() => alert("Tính năng đăng nhập Google đang được phát triển")} 
+            className="google-btn"
+          >
             <GoogleIcon />
             <span>Đăng nhập với Google</span>
           </button>

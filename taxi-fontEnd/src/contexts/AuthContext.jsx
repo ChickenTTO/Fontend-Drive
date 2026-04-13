@@ -98,6 +98,9 @@ export function AuthProvider({ children }) {
         return '/reports';
       case ROLES.DRIVER:
         return '/driver-portal';
+      case ROLES.USER:
+      case ROLES.CUSTOMER:
+        return '/user-dashboard';
       default:
         return '/map';
     }

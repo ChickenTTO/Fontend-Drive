@@ -1,13 +1,33 @@
 import React, { useState } from "react";
 import "./Login.css";
 import { GoogleIcon } from "../../components/icons";
-import authApi from "../../api/authApi";
+import { useAuth } from "../../contexts/AuthContext";
+import { useNavigate, useLocation, Navigate } from "react-router-dom";
 
-const Login = ({ onLogin }) => {
+const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Lấy thêm 'user' từ useAuth để biết người đang đăng nhập có role gì
+  const { login, getDefaultRoute, isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Nếu đã đăng nhập, redirect về trang phù hợp
+  if (isAuthenticated) {
+    let defaultPath = getDefaultRoute();
+
+    // Ép route cho user phòng trường hợp hàm getDefaultRoute chưa được cập nhật
+    if (user && (user.role === "user" || user.role === "customer")) {
+      defaultPath = "/user-dashboard";
+    }
+
+    const from = location.state?.from?.pathname || defaultPath;
+    // Dùng thẳng component <Navigate> của react-router-dom cho an toàn
+    return <Navigate to={from} replace />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,58 +40,24 @@ const Login = ({ onLogin }) => {
 
     setLoading(true);
     try {
-      // Gọi API login
-      const res = await authApi.login({ username, password });
+      // Hứng kết quả trả về từ hàm login (nếu có)
+      const loggedInUser = await login({ username, password });
 
-      // Debug: log response
-      console.log("LOGIN RESPONSE:", res);
+      let targetRoute = getDefaultRoute();
 
-      // Parse token linh hoạt
-      let token = null;
-      let message = "";
-
-      if (res?.token) {
-        token = res.token;
-      } else if (res?.data?.token) {
-        token = res.data.token;
-      } else if (res?.accessToken) {
-        token = res.accessToken;
-      } else if (res?.data?.accessToken) {
-        token = res.data.accessToken;
-      } else if (res?.success === false) {
-        message = res.msg || res.message || "Đăng nhập thất bại";
-      } else if (res?.msg) {
-        message = res.msg;
+      // Bắt luồng xử lý: Nếu tài khoản là user/customer thì ép về /user-dashboard
+      const currentRole = loggedInUser?.role || user?.role;
+      if (currentRole === "user" || currentRole === "customer") {
+        targetRoute = "/user-dashboard";
       }
 
-      if (token) {
-        // Save token with consistent key
-        localStorage.setItem("authToken", token);
-        
-        // Also save to other keys for compatibility
-        localStorage.setItem("token", token);
-        
-        // Save user info if available
-        const user = res?.user || res?.data?.user;
-        if (user) {
-          localStorage.setItem("user", JSON.stringify(user));
-        }
-        
-        console.log("✅ Token saved successfully");
-        
-        // Call onLogin callback
-        if (onLogin) {
-          onLogin();
-        }
-      } else {
-        setError(message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
-      }
-
+      // Redirect về trang user muốn vào trước đó (nếu có) hoặc default theo role
+      const from = location.state?.from?.pathname;
+      navigate(from || targetRoute, { replace: true });
     } catch (err) {
       console.error("LOGIN ERROR:", err);
-      
+
       let errorMsg = "Có lỗi xảy ra, thử lại sau";
-      
       if (err.response?.data?.message) {
         errorMsg = err.response.data.message;
       } else if (err.response?.data?.msg) {
@@ -79,7 +65,6 @@ const Login = ({ onLogin }) => {
       } else if (err.message) {
         errorMsg = err.message;
       }
-      
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -127,9 +112,11 @@ const Login = ({ onLogin }) => {
         <div className="divider">Hoặc</div>
 
         <div className="login-actions">
-          <button 
+          <button
             type="button"
-            onClick={() => alert("Tính năng đăng nhập Google đang được phát triển")} 
+            onClick={() =>
+              alert("Tính năng đăng nhập Google đang được phát triển")
+            }
             className="google-btn"
           >
             <GoogleIcon />

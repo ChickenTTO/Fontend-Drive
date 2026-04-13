@@ -1,6 +1,6 @@
 export const ROLES = {
-  ADMIN: 'ADMIN',
-  DISPATCHER: 'DISPATCHER',   // Điều phối
-  DRIVER: 'DRIVER',
-  ACCOUNTANT: 'ACCOUNTANT',
+  ADMIN: 'admin',
+  DISPATCHER: 'dispatcher',   // Điều phối
+  DRIVER: 'driver',
+  ACCOUNTANT: 'accountant',
 };

@@ -1,15 +1,7 @@
-import React, { useState, useEffect } from "react";
-import {
-  NavLink as RouterNavLink,
-  Routes,
-  Route,
-  Navigate,
-  useNavigate,
-} from "react-router-dom";
+import React, { useState } from "react";
+import { NavLink as RouterNavLink, useNavigate } from "react-router-dom";
 import "./App.css";
-import BookingAPITester from "./pages/Test/BookingAPITester";
-import CheckBookingSchema from "./pages/Test/CheckBookingSchema";
-// 1. Import Icons & Components
+// Icons
 import {
   SidebarIcon,
   SunIcon,
@@ -17,18 +9,13 @@ import {
   MenuIcon,
   XIcon,
 } from "./components/icons";
-import Login from "./pages/Auth/Login";
+// Auth
+import { useAuth } from "./contexts/AuthContext";
+import { ROLES } from "./constants/roles";
+// Router
+import AppRouter from "./router/AppRouter";
 
-// 2. Import Pages (CHUYỂN TẤT CẢ IMPORT LÊN ĐẦU FILE)
-import VehicleList from "./pages/Vehicles/VehicleList";
-import DriverList from "./pages/Drivers/DriverList";
-import OperationMap from "./pages/Dispatch/OperationMap";
-import Reports from "./pages/Reports/Reports";
-import ActiveVehicles from "./pages/Dispatch/ActiveVehicles";
-import CustomerList from "./pages/Customers/CustomerList";
-
-// 3. Khai báo Component phụ (Ở trên cùng hoặc tách file riêng)
-// SidebarLink component
+// ─── SidebarLink ────────────────────────────────────────────────────────────
 const SidebarLink = ({ to, icon, label, onClick }) => (
   <RouterNavLink
     to={to}
@@ -40,46 +27,81 @@ const SidebarLink = ({ to, icon, label, onClick }) => (
   </RouterNavLink>
 );
 
-// PrivateRoute component
-const PrivateRoute = ({ isAuthenticated, children }) => {
-  if (isAuthenticated) return children;
-  return <Navigate to="/login" replace />;
+// ─── Cấu hình menu theo role ─────────────────────────────────────────────────
+const NAV_ITEMS = [
+  {
+    to: "/map",
+    tab: "map",
+    label: "Bản đồ Vận hành",
+    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
+  },
+  {
+    to: "/active-vehicles",
+    tab: "active-vehicles",
+    label: "Giám sát 24/24",
+    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
+  },
+  {
+    to: "/vehicles",
+    tab: "vehicles",
+    label: "Quản lý Xe",
+    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
+  },
+  {
+    to: "/drivers",
+    tab: "drivers",
+    label: "Quản lý Tài xế",
+    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
+  },
+  {
+    to: "/customers",
+    tab: "customers",
+    label: "Khách hàng",
+    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
+  },
+  {
+    to: "/reports",
+    tab: "reports",
+    label: "Báo cáo",
+    roles: [ROLES.ADMIN, ROLES.ACCOUNTANT],
+  },
+];
+
+// Label hiển thị thân thiện cho role
+const ROLE_LABELS = {
+  [ROLES.ADMIN]: "Quản trị viên",
+  [ROLES.DISPATCHER]: "Điều phối viên",
+  [ROLES.ACCOUNTANT]: "Kế toán",
+  [ROLES.DRIVER]: "Tài xế",
 };
 
-// Chatbot fallback
-const Chatbot = () => {
-  return null;
-};
-
-// Safe defaults
+// ─── Mock data defaults ──────────────────────────────────────────────────────
 const MOCK_VEHICLES = [];
 const MOCK_DRIVERS = [];
 const MOCK_REPORTS = [];
 const MOCK_CUSTOMERS = [];
 
+// ─── App ─────────────────────────────────────────────────────────────────────
 const App = () => {
-  // State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, isAuthenticated, logout, hasRole } = useAuth();
+  const navigate = useNavigate();
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Router hook
-  const navigate = useNavigate();
-
-  // State Deep link
+  // Deep-link states
   const [vehicleToView, setVehicleToView] = useState(null);
   const [vehicleToManage, setVehicleToManage] = useState(null);
   const [activeVehicleDetailId, setActiveVehicleDetailId] = useState(null);
 
-  // State Data
+  // Data states
   const [vehicles, setVehicles] = useState(MOCK_VEHICLES);
   const [drivers, setDrivers] = useState(MOCK_DRIVERS);
   const [reports, setReports] = useState(MOCK_REPORTS);
   const [customers, setCustomers] = useState(MOCK_CUSTOMERS);
 
-  // Effect Dark Mode
-  useEffect(() => {
+  // Dark mode
+  React.useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add("dark");
     } else {
@@ -87,27 +109,38 @@ const App = () => {
     }
   }, [isDarkMode]);
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
+  const toggleTheme = () => setIsDarkMode((v) => !v);
 
   // Handlers
   const handleViewVehicleOnMap = (vehicleId) => {
     setVehicleToView(vehicleId);
     navigate("/map");
   };
-
   const handleManageVehicle = (vehicleId) => {
     setVehicleToManage(vehicleId);
-    navigate("/vehicles");
+    if (vehicleId) navigate("/vehicles");
   };
-
   const handleShowActiveVehicleDetail = (vehicleId) => {
     setActiveVehicleDetailId(vehicleId);
-    navigate("/active-vehicles");
+    if (vehicleId) navigate("/active-vehicles");
   };
 
-  // Sidebar Content
+  // Logout handler
+  const handleLogout = () => {
+    logout();
+    setIsSidebarOpen(false);
+    navigate("/login");
+  };
+
+  // Lọc menu theo role của user hiện tại
+  const visibleNavItems = NAV_ITEMS.filter((item) => hasRole(item.roles));
+
+  // Role badge
+  const userRole = user?.role || user?.roles;
+  const userRoleLabel =
+    ROLE_LABELS[Array.isArray(userRole) ? userRole[0] : userRole] || userRole || "";
+
+  // ── Sidebar content ────────────────────────────────────────────────────────
   const sidebarContent = (
     <div className="sidebar-content">
       <div className="sidebar-header">
@@ -120,47 +153,45 @@ const App = () => {
         </button>
       </div>
 
-      <nav className="nav-menu">
-        <SidebarLink
-          to="/map"
-          icon={<SidebarIcon tab="map" />}
-          label="Bản đồ Vận hành"
-          onClick={() => {
-            setIsSidebarOpen(false);
-            navigate("/map");
+      {/* User info */}
+      {isAuthenticated && user && (
+        <div
+          style={{
+            padding: "10px 16px",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            marginBottom: 8,
           }}
-        />
+        >
+          <div style={{ fontWeight: 600, fontSize: 14, opacity: 0.9 }}>
+            {user.name || user.username || user.email || "Người dùng"}
+          </div>
+          {userRoleLabel && (
+            <div
+              style={{
+                fontSize: 11,
+                opacity: 0.6,
+                marginTop: 2,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
+              {userRoleLabel}
+            </div>
+          )}
+        </div>
+      )}
 
-        <SidebarLink
-          to="/active-vehicles"
-          icon={<SidebarIcon tab="active-vehicles" />}
-          label="Giám sát 24/24"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-        <SidebarLink
-          to="/vehicles"
-          icon={<SidebarIcon tab="vehicles" />}
-          label="Quản lý Xe"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-        <SidebarLink
-          to="/drivers"
-          icon={<SidebarIcon tab="drivers" />}
-          label="Quản lý Tài xế"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-        <SidebarLink
-          to="/customers"
-          icon={<SidebarIcon tab="customers" />}
-          label="Khách hàng"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-        <SidebarLink
-          to="/reports"
-          icon={<SidebarIcon tab="reports" />}
-          label="Báo cáo"
-          onClick={() => setIsSidebarOpen(false)}
-        />
+      {/* Navigation - chỉ hiển thị những item user có quyền */}
+      <nav className="nav-menu">
+        {visibleNavItems.map((item) => (
+          <SidebarLink
+            key={item.to}
+            to={item.to}
+            icon={<SidebarIcon tab={item.tab} />}
+            label={item.label}
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        ))}
       </nav>
 
       <div className="theme-toggle-container">
@@ -178,184 +209,64 @@ const App = () => {
     <div className="laptop-frame">
       <div className="laptop-screen">
         <div className="app-container">
-          <aside className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
-            {sidebarContent}
-            <div style={{ padding: "12px" }}>
-              <button
-                className="btn-logout"
-                onClick={() => {
-                  setIsAuthenticated(false);
-                  setIsSidebarOpen(false);
-                  navigate("/login");
-                }}
-              >
-                Đăng xuất
-              </button>
-            </div>
-          </aside>
-
-          <div className="main-content">
-            <header className="mobile-header">
-              <h1 className="app-title" style={{ fontSize: "20px" }}>
-                Smart Fleet AI
-              </h1>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="btn-menu"
-                >
-                  <MenuIcon />
-                </button>
-                <button
-                  className="btn-logout-mobile"
-                  onClick={() => {
-                    setIsAuthenticated(false);
-                    setIsSidebarOpen(false);
-                    navigate("/login");
-                  }}
-                >
+          {/* Sidebar - chỉ render khi đã đăng nhập */}
+          {isAuthenticated && (
+            <aside className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
+              {sidebarContent}
+              <div style={{ padding: "12px" }}>
+                <button className="btn-logout" onClick={handleLogout}>
                   Đăng xuất
                 </button>
               </div>
-            </header>
+            </aside>
+          )}
+
+          <div className="main-content">
+            {/* Mobile header */}
+            {isAuthenticated && (
+              <header className="mobile-header">
+                <h1 className="app-title" style={{ fontSize: "20px" }}>
+                  Smart Fleet AI
+                </h1>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="btn-menu"
+                  >
+                    <MenuIcon />
+                  </button>
+                  <button
+                    className="btn-logout-mobile"
+                    onClick={handleLogout}
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
+              </header>
+            )}
 
             <main className="page-scroll-container">
-              <Routes>
-                <Route
-                  path="/login"
-                  element={
-                    isAuthenticated ? (
-                      <Navigate to="/map" replace />
-                    ) : (
-                      <Login
-                        onLogin={() => {
-                          setIsAuthenticated(true);
-                          navigate("/map");
-                        }}
-                      />
-                    )
-                  }
-                />
-
-                <Route
-                  path="/"
-                  element={
-                    <PrivateRoute isAuthenticated={isAuthenticated}>
-                      <Navigate to="/map" replace />
-                    </PrivateRoute>
-                  }
-                />
-
-                {/* ĐÂY LÀ ROUTE XỬ LÝ HIỂN THỊ TRANG OPERATION MAP */}
-                <Route
-                  path="/map"
-                  element={
-                    <PrivateRoute isAuthenticated={isAuthenticated}>
-                      <OperationMap
-                        vehicles={vehicles}
-                        setVehicles={setVehicles}
-                        drivers={drivers}
-                        reports={reports}
-                        vehicleToView={vehicleToView}
-                        onMapVehicleViewed={() => setVehicleToView(null)}
-                        onManageVehicle={handleManageVehicle}
-                        onShowActiveVehicleDetail={
-                          handleShowActiveVehicleDetail
-                        }
-                        customers={customers}
-                        setCustomers={setCustomers}
-                      />
-                    </PrivateRoute>
-                  }
-                />
-
-                <Route
-                  path="/active-vehicles"
-                  element={
-                    <PrivateRoute isAuthenticated={isAuthenticated}>
-                      <ActiveVehicles
-                        vehicles={vehicles}
-                        setVehicles={setVehicles}
-                        drivers={drivers}
-                        initialVehicleId={activeVehicleDetailId}
-                        onClearInitialVehicleId={() =>
-                          setActiveVehicleDetailId(null)
-                        }
-                        reports={reports}
-                        onViewOnMap={handleViewVehicleOnMap}
-                      />
-                    </PrivateRoute>
-                  }
-                />
-
-                <Route
-                  path="/vehicles"
-                  element={
-                    <PrivateRoute isAuthenticated={isAuthenticated}>
-                      <VehicleList
-                        vehicles={vehicles}
-                        setVehicles={setVehicles}
-                        drivers={drivers}
-                        onViewOnMap={handleViewVehicleOnMap}
-                        reports={reports}
-                        initialVehicleId={vehicleToManage}
-                        onClearInitialVehicleId={() => setVehicleToManage(null)}
-                      />
-                    </PrivateRoute>
-                  }
-                />
-
-                <Route
-                  path="/drivers"
-                  element={
-                    <PrivateRoute isAuthenticated={isAuthenticated}>
-                      <DriverList
-                        drivers={drivers}
-                        setDrivers={setDrivers}
-                        vehicles={vehicles}
-                        setVehicles={setVehicles}
-                        onViewOnMap={handleViewVehicleOnMap}
-                        reports={reports}
-                      />
-                    </PrivateRoute>
-                  }
-                />
-
-                <Route
-                  path="/customers"
-                  element={
-                    <PrivateRoute isAuthenticated={isAuthenticated}>
-                      <CustomerList
-                        customers={customers}
-                        setCustomers={setCustomers}
-                        vehicles={vehicles}
-                      />
-                    </PrivateRoute>
-                  }
-                />
-
-                <Route
-                  path="/reports"
-                  element={
-                    <PrivateRoute isAuthenticated={isAuthenticated}>
-                      <Reports
-                        reports={reports}
-                        setReports={setReports}
-                        drivers={drivers}
-                        vehicles={vehicles}
-                      />
-                    </PrivateRoute>
-                  }
-                />
-                <Route path="/check-schema" element={<CheckBookingSchema />} />
-
-                <Route path="*" element={<div>Không tìm thấy trang</div>} />
-              </Routes>
+              <AppRouter
+                vehicles={vehicles}
+                setVehicles={setVehicles}
+                drivers={drivers}
+                setDrivers={setDrivers}
+                reports={reports}
+                setReports={setReports}
+                customers={customers}
+                setCustomers={setCustomers}
+                vehicleToView={vehicleToView}
+                onMapVehicleViewed={() => setVehicleToView(null)}
+                handleManageVehicle={handleManageVehicle}
+                handleShowActiveVehicleDetail={handleShowActiveVehicleDetail}
+                vehicleToManage={vehicleToManage}
+                activeVehicleDetailId={activeVehicleDetailId}
+                handleViewVehicleOnMap={handleViewVehicleOnMap}
+              />
             </main>
           </div>
         </div>
       </div>
-      <Chatbot />
     </div>
   );
 };

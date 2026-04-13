@@ -32,6 +32,7 @@ select,
 .form-textarea,
 .form-select {
     color: #111827; /* black for typed text */
+    background-color: #ffffff; /* FORCE white background */
 }
 
 input::placeholder,

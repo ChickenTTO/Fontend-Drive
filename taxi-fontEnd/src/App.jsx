@@ -14,6 +14,8 @@ import { useAuth } from "./contexts/AuthContext";
 import { ROLES } from "./constants/roles";
 // Router
 import AppRouter from "./router/AppRouter";
+// Chatbot
+import { ChatbotWidget } from "./components/specific/ChatbotWidget";
 
 // ─── SidebarLink ────────────────────────────────────────────────────────────
 const SidebarLink = ({ to, icon, label, onClick }) => (
@@ -293,6 +295,7 @@ const App = () => {
                 activeVehicleDetailId={activeVehicleDetailId}
                 handleViewVehicleOnMap={handleViewVehicleOnMap}
               />
+              <ChatbotWidget />
             </main>
           </div>
         </div>

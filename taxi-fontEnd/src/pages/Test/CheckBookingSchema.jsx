@@ -5,7 +5,7 @@ const CheckBookingSchema = () => {
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState('');
 
-  const API_URL = 'https://backend-drive-bgk5.onrender.com/api';
+  const API_URL = 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchBookings();

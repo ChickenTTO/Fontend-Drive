@@ -100,6 +100,36 @@ const App = () => {
   const [reports, setReports] = useState(MOCK_REPORTS);
   const [customers, setCustomers] = useState(MOCK_CUSTOMERS);
 
+  // Fetch global data on authentication
+  React.useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const fetchGlobalData = async () => {
+      try {
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        };
+
+        // Fetch drivers, vehicles, customers in parallel
+        const [drvRes, vehRes, custRes] = await Promise.all([
+          fetch('http://localhost:5000/api/drivers', { headers }).then(r => r.ok ? r.json() : { data: [] }),
+          fetch('http://localhost:5000/api/vehicles', { headers }).then(r => r.ok ? r.json() : { data: [] }),
+          fetch('http://localhost:5000/api/customers', { headers }).then(r => r.ok ? r.json() : { data: [] })
+        ]);
+
+        if (drvRes.data) setDrivers(drvRes.data);
+        if (vehRes.data) setVehicles(vehRes.data);
+        if (custRes.data) setCustomers(custRes.data);
+      } catch (err) {
+        console.error('Error loading global data:', err);
+      }
+    };
+
+    fetchGlobalData();
+  }, [isAuthenticated]);
+
   // Dark mode
   React.useEffect(() => {
     if (isDarkMode) {

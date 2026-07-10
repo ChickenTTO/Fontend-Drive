@@ -4,7 +4,7 @@ const BookingAPITester = () => {
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const API_URL = 'https://backend-drive-bgk5.onrender.com/api/bookings';
+  const API_URL = 'http://localhost:5000/api/bookings';
 
   const testPayloads = [
     {

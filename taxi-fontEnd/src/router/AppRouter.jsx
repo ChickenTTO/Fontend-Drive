@@ -2,6 +2,12 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import PrivateRoute from "./PrivateRoute";
 import { ROLES } from "../constants/roles";
+import { useAuth } from "../contexts/AuthContext";
+
+const RootRedirect = () => {
+  const { getDefaultRoute } = useAuth();
+  return <Navigate to={getDefaultRoute()} replace />;
+};
 
 // Pages
 import Login from "../pages/Auth/Login";
@@ -54,7 +60,7 @@ const AppRouter = ({
         path="/"
         element={
           <PrivateRoute>
-            <Navigate to="/map" replace />
+            <RootRedirect />
           </PrivateRoute>
         }
       />

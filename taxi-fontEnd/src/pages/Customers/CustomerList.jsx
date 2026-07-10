@@ -8,12 +8,18 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
     const [formData, setFormData] = useState({ name: '', phone: '', email: '', address: '', type: 'regular', notes: '' });
     const [searchTerm, setSearchTerm] = useState('');
 
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+        if (!token) return {};
+        return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    };
+
     // === Fetch customers từ API ===
     useEffect(() => {
         const fetchCustomers = async () => {
             try {
-                const res = await fetch('https://backend-drive-bgk5.onrender.com/api/customers', {
-                    headers: { 'Content-Type': 'application/json' }
+                const res = await fetch('http://localhost:5000/api/customers', {
+                    headers: getAuthHeaders()
                 });
 
                 if (!res.ok) {
@@ -49,14 +55,14 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
     const handleSave = async () => {
         try {
             const url = editingCustomer
-                ? `https://backend-drive-bgk5.onrender.com/api/customers/${editingCustomer._id || editingCustomer.id}`
-                : `https://backend-drive-bgk5.onrender.com/api/customers`;
+                ? `http://localhost:5000/api/customers/${editingCustomer._id || editingCustomer.id}`
+                : `http://localhost:5000/api/customers`;
 
             const method = editingCustomer ? 'PUT' : 'POST';
 
             const res = await fetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(formData)
             });
 
@@ -86,9 +92,9 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
         if (!window.confirm('Bạn có chắc chắn muốn xóa khách hàng này?')) return;
 
         try {
-            const res = await fetch(`https://backend-drive-bgk5.onrender.com/api/customers/${id}`, {
+            const res = await fetch(`http://localhost:5000/api/customers/${id}`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' }
+                headers: getAuthHeaders()
             });
 
             if (res.ok) {
@@ -104,10 +110,11 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
 
     // === Lọc khách hàng theo tìm kiếm ===
     const filteredCustomers = Array.isArray(customers)
-        ? customers.filter(c =>
-            c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.phone.includes(searchTerm)
-        )
+        ? customers.filter(c => {
+            const nameMatch = c && c.name ? c.name.toLowerCase().includes(searchTerm.toLowerCase()) : false;
+            const phoneMatch = c && c.phone ? c.phone.includes(searchTerm) : false;
+            return nameMatch || phoneMatch;
+        })
         : [];
 
     const formatCurrency = (value) =>

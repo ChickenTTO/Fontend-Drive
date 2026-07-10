@@ -7,7 +7,7 @@ export function SocketProvider({ children }) {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    socketRef.current = io('https://backend-drive-bgk5.onrender.com', {
+    socketRef.current = io('http://localhost:5000', {
       transports: ['websocket'],
     });
 

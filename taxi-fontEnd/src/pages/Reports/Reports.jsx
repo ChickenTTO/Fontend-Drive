@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ResponsiveContainer, 
   PieChart, Pie, Cell, Tooltip, Legend,
@@ -263,6 +263,79 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Normalize drivers to have id and name keys (supporting MongoDB models)
+  const normalizedDrivers = useMemo(() => {
+    return (drivers || []).map(d => ({
+      ...d,
+      id: d._id || d.id,
+      name: d.name || d.fullName || 'Tài xế'
+    }));
+  }, [drivers]);
+
+  // Normalize vehicles to have id key
+  const normalizedVehicles = useMemo(() => {
+    return (vehicles || []).map(v => ({
+      ...v,
+      id: v._id || v.id
+    }));
+  }, [vehicles]);
+
+  // Fetch completed bookings and map them to daily reports
+  useEffect(() => {
+    const fetchBookingsAndMapToReports = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+        const res = await fetch('http://localhost:5000/api/bookings', {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!res.ok) throw new Error('Không thể tải danh sách chuyến đi');
+        const json = await res.json();
+        const bookings = json.data || [];
+        
+        // Map completed bookings to reports structure
+        const mappedReports = bookings
+          .filter(trip => trip.status === 'completed')
+          .map(trip => {
+             const dateStr = trip.endTime 
+               ? trip.endTime.split('T')[0] 
+               : (trip.completedTime ? trip.completedTime.split('T')[0] : new Date(trip.updatedAt || trip.createdAt).toISOString().split('T')[0]);
+             
+             // Extract driver and vehicle IDs (supporting populated objects or strings)
+             const drvId = trip.driver && typeof trip.driver === 'object' ? trip.driver._id : trip.driver;
+             const vehId = trip.vehicle && typeof trip.vehicle === 'object' ? trip.vehicle._id : trip.vehicle;
+
+             return {
+               id: trip._id,
+               date: dateStr,
+               driverId: drvId,
+               vehicleId: vehId,
+               revenue: trip.fare || trip.finalPrice || 0,
+               distance: trip.distance || 0,
+               customerTrips: 1,
+               cargoTrips: 0,
+               startTime: trip.startTime || trip.createdAt,
+               endTime: trip.endTime || trip.completedTime
+             };
+          });
+
+        setReports(mappedReports);
+      } catch (err) {
+        console.error('Error fetching reports:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBookingsAndMapToReports();
+  }, [setReports]);
 
   // Logic xử lý dữ liệu biểu đồ
   const { startDate, endDate, chartData } = useMemo(() => {
@@ -271,7 +344,7 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
     const start = new Date(end);
     start.setDate(end.getDate() - 13);
     
-    const filteredReports = reports.filter(r => {
+    const filteredReports = (reports || []).filter(r => {
       const reportDate = new Date(r.date);
       return reportDate >= start && reportDate <= end;
     });
@@ -289,8 +362,8 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
     filteredReports.forEach(report => {
       if (!dataByDate[report.date]) return;
 
-      const driver = drivers.find(d => d.id === report.driverId);
-      const vehicle = vehicles.find(v => v.id === report.vehicleId);
+      const driver = normalizedDrivers.find(d => d.id === report.driverId);
+      const vehicle = normalizedVehicles.find(v => v.id === report.vehicleId);
 
       if (driver) {
         dataByDate[report.date][`${driver.name}_revenue`] = (dataByDate[report.date][`${driver.name}_revenue`] || 0) + report.revenue;
@@ -304,17 +377,17 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
     });
 
     return { startDate: start, endDate: end, chartData: Object.values(dataByDate) };
-  }, [reports, drivers, vehicles, dateOffset]);
+  }, [reports, normalizedDrivers, normalizedVehicles, dateOffset]);
 
   // Logic thống kê tháng
   const monthlyStats = useMemo(() => {
     const stats = {};
     
-    vehicles.forEach(v => {
+    normalizedVehicles.forEach(v => {
         stats[v.id] = { revenue: 0, distance: 0, trips: 0, vehicle: v };
     });
 
-    reports.forEach(r => {
+    (reports || []).forEach(r => {
         const d = new Date(r.date);
         if (d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear) {
             if (stats[r.vehicleId]) {
@@ -326,7 +399,7 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
     });
 
     return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
-  }, [reports, vehicles, selectedMonth, selectedYear]);
+  }, [reports, normalizedVehicles, selectedMonth, selectedYear]);
 
   const handlePointClick = (data, id, type) => {
     let date = '';
@@ -354,16 +427,19 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
 
   const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 
-  const activeDrivers = drivers.filter(d => !d.isArchived);
-  const activeVehicles = vehicles;
+  const activeDrivers = normalizedDrivers.filter(d => d.isActive !== false && !d.isArchived);
+  const activeVehicles = normalizedVehicles;
 
   return (
     <div className="reports-page">
+      {loading && <div style={{textAlign: 'center', padding: '10px', color: '#3b82f6'}}>Đang cập nhật dữ liệu...</div>}
+      {error && <div style={{textAlign: 'center', padding: '10px', color: '#ef4444'}}>Lỗi tải báo cáo: {error}</div>}
+      
       {selectedReport && (
         <ReportDetailModal 
             report={selectedReport} 
-            driver={drivers.find(d => d.id === selectedReport.driverId)}
-            vehicle={vehicles.find(v => v.id === selectedReport.vehicleId)}
+            driver={normalizedDrivers.find(d => d.id === selectedReport.driverId)}
+            vehicle={normalizedVehicles.find(v => v.id === selectedReport.vehicleId)}
             onClose={() => setSelectedReport(null)}
         />
       )}
@@ -372,8 +448,8 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
         onSave={handleCreateManualReport}
-        drivers={drivers}
-        vehicles={vehicles}
+        drivers={normalizedDrivers}
+        vehicles={normalizedVehicles}
       />
 
       {/* Section: Biểu đồ Hàng ngày */}

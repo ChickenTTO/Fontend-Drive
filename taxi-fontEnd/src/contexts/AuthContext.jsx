@@ -80,8 +80,14 @@ export function AuthProvider({ children }) {
   // Helper: kiểm tra user có 1 trong các role cho phép không
   // Dùng: hasRole([ROLES.ADMIN, ROLES.DISPATCHER])
   const hasRole = (allowedRoles = []) => {
-    // Tạm thời vô hiệu hoá kiểm tra role theo yêu cầu, cho phép full quyền
-    return true;
+    if (!allowedRoles || allowedRoles.length === 0) return true;
+    if (!user) return false;
+
+    const userRole = user.role || user.roles;
+    if (Array.isArray(userRole)) {
+      return userRole.some(r => allowedRoles.includes(r));
+    }
+    return allowedRoles.includes(userRole);
   };
 
   // Redirect mặc định theo role sau khi đăng nhập

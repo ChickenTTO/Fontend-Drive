@@ -7,6 +7,7 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
     const [editingCustomer, setEditingCustomer] = useState(null);
     const [formData, setFormData] = useState({ name: '', phone: '', email: '', address: '', type: 'regular', notes: '' });
     const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const getAuthHeaders = () => {
         const token = localStorage.getItem('authToken') || localStorage.getItem('token');
@@ -16,35 +17,43 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
 
     // === Fetch customers từ API ===
     useEffect(() => {
-        const fetchCustomers = async () => {
-            try {
-                const res = await fetch('http://localhost:5000/api/customers', {
-                    headers: getAuthHeaders()
-                });
-
-                if (!res.ok) {
-                    console.error('Fetch failed', res.status, res.statusText);
-                    setCustomers([]);
-                    return;
-                }
-
-                const data = await res.json();
-                // Nếu backend trả object { success: true, data: [...] }, lấy data
-                setCustomers(Array.isArray(data) ? data : data.data || []);
-            } catch (err) {
-                console.error('Lỗi load customers', err);
-                setCustomers([]);
-            }
-        };
-
         fetchCustomers();
-    }, [setCustomers]);
+    }, []);
+
+    const fetchCustomers = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch('http://localhost:5000/api/customers', {
+                headers: getAuthHeaders()
+            });
+
+            if (!res.ok) {
+                console.error('Fetch failed', res.status, res.statusText);
+                return;
+            }
+
+            const data = await res.json();
+            const customerList = Array.isArray(data) ? data : (data.data || []);
+            setCustomers(customerList);
+        } catch (err) {
+            console.error('Lỗi load customers', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // === Thêm / sửa khách ===
     const handleOpenModal = (customer) => {
         if (customer) {
             setEditingCustomer(customer);
-            setFormData(customer);
+            setFormData({
+                name: customer.name || '',
+                phone: customer.phone || '',
+                email: customer.email || '',
+                address: customer.address || '',
+                type: customer.isVIP ? 'vip' : 'regular',
+                notes: customer.notes || ''
+            });
         } else {
             setEditingCustomer(null);
             setFormData({ name: '', phone: '', email: '', address: '', type: 'regular', notes: '' });
@@ -53,6 +62,11 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
     };
 
     const handleSave = async () => {
+        if (!formData.phone || !formData.phone.trim()) {
+            alert('Vui lòng nhập Số điện thoại khách hàng!');
+            return;
+        }
+
         try {
             const url = editingCustomer
                 ? `http://localhost:5000/api/customers/${editingCustomer._id || editingCustomer.id}`
@@ -66,21 +80,25 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
                 body: JSON.stringify(formData)
             });
 
+            const data = await res.json().catch(() => ({}));
+
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                alert(errData.message || 'Lỗi lưu khách hàng');
+                alert(data.message || 'Lỗi lưu thông tin khách hàng');
                 return;
             }
 
-            const data = await res.json();
+            const savedCustomer = data.data || data;
+
             if (editingCustomer) {
                 setCustomers(prev =>
-                    prev.map(c => (c._id === data._id || c.id === data.id ? data : c))
+                    prev.map(c => (c._id === savedCustomer._id || c.id === savedCustomer.id ? savedCustomer : c))
                 );
             } else {
-                setCustomers(prev => [...prev, data]);
+                setCustomers(prev => [savedCustomer, ...prev]);
             }
+
             setIsModalOpen(false);
+            fetchCustomers();
         } catch (err) {
             console.error(err);
             alert('Lỗi kết nối server');
@@ -100,7 +118,8 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
             if (res.ok) {
                 setCustomers(prev => prev.filter(c => c._id !== id && c.id !== id));
             } else {
-                alert('Xóa thất bại');
+                const errData = await res.json().catch(() => ({}));
+                alert(errData.message || 'Xóa thất bại');
             }
         } catch (err) {
             console.error(err);
@@ -108,7 +127,6 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
         }
     };
 
-    // === Lọc khách hàng theo tìm kiếm ===
     const filteredCustomers = Array.isArray(customers)
         ? customers.filter(c => {
             const nameMatch = c && c.name ? c.name.toLowerCase().includes(searchTerm.toLowerCase()) : false;
@@ -118,20 +136,21 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
         : [];
 
     const formatCurrency = (value) =>
-        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value || 0);
 
-    // === Tính số cuốc & doanh thu từ vehicles (nếu cần) ===
     const getCustomerStats = (customer) => {
         const realAssignments = [];
-        vehicles.forEach(v => {
-            if (v.assignments) {
-                v.assignments.forEach(a => {
-                    if (a.customerPhone === customer.phone) realAssignments.push(a);
-                });
-            }
-        });
-        const totalTrips = realAssignments.length;
-        const totalRevenue = realAssignments.reduce((sum, a) => sum + (a.price || 0), 0);
+        if (Array.isArray(vehicles)) {
+            vehicles.forEach(v => {
+                if (v.assignments) {
+                    v.assignments.forEach(a => {
+                        if (a.customerPhone === customer.phone) realAssignments.push(a);
+                    });
+                }
+            });
+        }
+        const totalTrips = customer.totalTrips || realAssignments.length;
+        const totalRevenue = customer.totalSpent || realAssignments.reduce((sum, a) => sum + (a.price || 0), 0);
         return { totalTrips, totalRevenue };
     };
 
@@ -139,7 +158,7 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
         <div className="customer-page">
             <div className="page-header">
                 <h2>Quản lý Khách hàng</h2>
-                <button onClick={() => handleOpenModal()} className="btn-primary">Thêm Khách hàng</button>
+                <button onClick={() => handleOpenModal()} className="btn-primary">+ Thêm Khách hàng</button>
             </div>
 
             <div className="search-container">
@@ -165,11 +184,20 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredCustomers.length > 0 ? filteredCustomers.map(customer => {
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={5} style={{textAlign:'center', padding:'20px', color:'#6b7280'}}>
+                                        Đang tải danh sách khách hàng...
+                                    </td>
+                                </tr>
+                            ) : filteredCustomers.length > 0 ? filteredCustomers.map(customer => {
                                 const stats = getCustomerStats(customer);
                                 return (
                                     <tr key={customer.id || customer._id}>
-                                        <td>{customer.name}</td>
+                                        <td>
+                                            <strong>{customer.name || 'Khách hàng'}</strong>
+                                            {customer.isVIP && <span style={{ marginLeft: 6, background: '#fef3c7', color: '#d97706', fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>VIP</span>}
+                                        </td>
                                         <td>{customer.phone}</td>
                                         <td style={{textAlign:'center'}}>{stats.totalTrips}</td>
                                         <td style={{textAlign:'right', color:'#16a34a'}}>{formatCurrency(stats.totalRevenue)}</td>
@@ -199,16 +227,39 @@ const CustomerList = ({ customers, setCustomers, vehicles }) => {
                             <button onClick={() => setIsModalOpen(false)} className="btn-close"><XIcon /></button>
                         </div>
                         <div className="modal-body">
-                            <input type="text" placeholder="Tên khách hàng" value={formData.name} onChange={e => setFormData({...formData, name:e.target.value})} className="form-input" />
-                            <input type="tel" placeholder="Số điện thoại" value={formData.phone} onChange={e => setFormData({...formData, phone:e.target.value})} className="form-input" />
-                            <input type="text" placeholder="Địa chỉ" value={formData.address} onChange={e => setFormData({...formData, address:e.target.value})} className="form-input" />
+                            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>
+                                Tên khách hàng
+                            </label>
+                            <input type="text" placeholder="Nhập tên khách hàng" value={formData.name} onChange={e => setFormData({...formData, name:e.target.value})} className="form-input" />
+                            
+                            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4, marginTop: 8 }}>
+                                Số điện thoại <span style={{ color: 'red' }}>*</span>
+                            </label>
+                            <input type="tel" placeholder="Nhập số điện thoại (Bắt buộc)" value={formData.phone} onChange={e => setFormData({...formData, phone:e.target.value})} className="form-input" required />
+                            
+                            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4, marginTop: 8 }}>
+                                Địa chỉ
+                            </label>
+                            <input type="text" placeholder="Địa chỉ giao hàng / nhận hàng" value={formData.address} onChange={e => setFormData({...formData, address:e.target.value})} className="form-input" />
+                            
+                            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4, marginTop: 8 }}>
+                                Email
+                            </label>
                             <input type="email" placeholder="Email (Tuỳ chọn)" value={formData.email} onChange={e => setFormData({...formData, email:e.target.value})} className="form-input" />
+                            
+                            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4, marginTop: 8 }}>
+                                Phân loại khách
+                            </label>
                             <select value={formData.type} onChange={e => setFormData({...formData, type:e.target.value})} className="form-select">
                                 <option value="regular">Khách thường</option>
                                 <option value="vip">Khách VIP</option>
-                                <option value="corporate">Doanh nghiệp</option>
+                                <option value="corporate">Doanh nghiệp đối tác</option>
                             </select>
-                            <textarea placeholder="Ghi chú" value={formData.notes} onChange={e => setFormData({...formData, notes:e.target.value})} className="form-textarea" />
+                            
+                            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4, marginTop: 8 }}>
+                                Ghi chú
+                            </label>
+                            <textarea placeholder="Ghi chú thêm..." value={formData.notes} onChange={e => setFormData({...formData, notes:e.target.value})} className="form-textarea" />
                         </div>
                         <div className="modal-footer">
                             <button onClick={() => setIsModalOpen(false)} className="btn-secondary">Hủy</button>

@@ -9,7 +9,7 @@ const RootRedirect = () => {
   return <Navigate to={getDefaultRoute()} replace />;
 };
 
-// Pages
+// Pages gốc của bạn
 import Login from "../pages/Auth/Login";
 import Unauthorized from "../pages/Auth/Unauthorized";
 import OperationMap from "../pages/Dispatch/OperationMap";
@@ -20,18 +20,22 @@ import CustomerList from "../pages/Customers/CustomerList";
 import Reports from "../pages/Reports/Reports";
 import CheckBookingSchema from "../pages/Test/CheckBookingSchema";
 
+// Pages Futa Express bổ sung
+import DepotList from "../pages/Vehicles/DepotList";
+import FreightDispatch from "../pages/Dispatch/FreightDispatch";
+import BarcodeHandover from "../pages/Drivers/BarcodeHandover";
+import ExpenseApproval from "../pages/Accounting/ExpenseApproval";
+import FutaDashboard from "../pages/Reports/FutaDashboard";
+
 // --- PHÂN QUYỀN ---
 const ADMIN_DISPATCHER = [ROLES.ADMIN, ROLES.DISPATCHER];
 const ADMIN_ACCOUNTANT = [ROLES.ADMIN, ROLES.ACCOUNTANT];
-const ADMIN_ONLY = [ROLES.ADMIN];
-
-// ĐÃ THÊM: Tạo nhóm quyền dành riêng cho tài khoản thường
-// (Đảm bảo trong file constants/roles.js của bạn có khai báo thuộc tính USER hoặc CUSTOMER)
 const USER_ONLY = [ROLES.USER, ROLES.CUSTOMER];
 
-/**
- * AppRouter - Tập trung toàn bộ routing với phân quyền rõ ràng
- */
+const ALL_ROLES = [ROLES.ADMIN, ROLES.DISPATCHER, ROLES.DRIVER, ROLES.ACCOUNTANT];
+const HANDOVER_ROLES = [ROLES.ADMIN, ROLES.DISPATCHER, ROLES.DRIVER];
+const ACCOUNTING_ROLES = [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.DRIVER];
+
 const AppRouter = ({
   vehicles,
   setVehicles,
@@ -65,7 +69,7 @@ const AppRouter = ({
         }
       />
 
-      {/* Bản đồ vận hành - ADMIN + DISPATCHER */}
+      {/* Bản đồ vận hành - Form gốc */}
       <Route
         path="/map"
         element={
@@ -86,7 +90,7 @@ const AppRouter = ({
         }
       />
 
-      {/* Giám sát 24/24 - ADMIN + DISPATCHER */}
+      {/* Giám sát 24/24 - Form gốc */}
       <Route
         path="/active-vehicles"
         element={
@@ -106,7 +110,7 @@ const AppRouter = ({
         }
       />
 
-      {/* Quản lý xe - ADMIN + DISPATCHER */}
+      {/* Quản lý xe - Form gốc của bạn */}
       <Route
         path="/vehicles"
         element={
@@ -124,7 +128,7 @@ const AppRouter = ({
         }
       />
 
-      {/* Quản lý tài xế - ADMIN + DISPATCHER */}
+      {/* Quản lý tài xế - Form gốc */}
       <Route
         path="/drivers"
         element={
@@ -141,7 +145,7 @@ const AppRouter = ({
         }
       />
 
-      {/* Khách hàng - ADMIN + DISPATCHER */}
+      {/* Khách hàng - Form gốc */}
       <Route
         path="/customers"
         element={
@@ -155,7 +159,7 @@ const AppRouter = ({
         }
       />
 
-      {/* Báo cáo - ADMIN + ACCOUNTANT */}
+      {/* Báo cáo - Form gốc */}
       <Route
         path="/reports"
         element={
@@ -171,19 +175,57 @@ const AppRouter = ({
       />
 
       {/* ========================================================= */}
-      {/* ĐÃ THÊM: GIAO DIỆN DÀNH CHO TÀI KHOẢN USER / KHÁCH HÀNG   */}
+      {/* CÁC CHỨC NĂNG FUTA EXPRESS (BỔ SUNG, KHÔNG ẢNH HƯỞNG FORM GỐC) */}
       {/* ========================================================= */}
+      <Route
+        path="/depots"
+        element={
+          <PrivateRoute roles={ALL_ROLES}>
+            <DepotList />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dispatch-futa"
+        element={
+          <PrivateRoute roles={ADMIN_DISPATCHER}>
+            <FreightDispatch />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/barcode-handover"
+        element={
+          <PrivateRoute roles={HANDOVER_ROLES}>
+            <BarcodeHandover />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/expense-approval"
+        element={
+          <PrivateRoute roles={ACCOUNTING_ROLES}>
+            <ExpenseApproval />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dashboard-futa"
+        element={
+          <PrivateRoute roles={ADMIN_ACCOUNTANT}>
+            <FutaDashboard />
+          </PrivateRoute>
+        }
+      />
+
+      {/* User / Khách hàng */}
       <Route
         path="/user-dashboard"
         element={
           <PrivateRoute roles={USER_ONLY}>
-            {/* Tạm thời dùng thẻ div này để test. Sau này bạn import component màn hình User vào đây */}
             <div style={{ padding: "50px", textAlign: "center" }}>
               <h2 style={{ color: "#2563eb" }}>Xin chào Khách hàng!</h2>
-              <p>
-                Đây là khu vực hiển thị các chức năng đặt xe hoặc lịch sử chuyến
-                đi của riêng bạn.
-              </p>
+              <p>Khu vực lịch sử chuyến đi của riêng bạn.</p>
             </div>
           </PrivateRoute>
         }

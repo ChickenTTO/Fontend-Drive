@@ -7,10 +7,9 @@ import {
 } from 'recharts';
 import './Reports.css';
 
-
 import { XIcon, CarIcon, UserCircleIcon, CalendarIcon, PencilIcon } from '../../components/icons';
-
-
+import FutaDashboard from './FutaDashboard';
+import ExpenseApproval from '../Accounting/ExpenseApproval';
 
 const ReportDetailModal = ({ report, driver, vehicle, onClose }) => {
   if (!report) return null;
@@ -19,7 +18,7 @@ const ReportDetailModal = ({ report, driver, vehicle, onClose }) => {
       { name: 'Khách', value: report.customerTrips },
       { name: 'Hàng', value: report.cargoTrips },
   ];
-  const COLORS = ['#3b82f6', '#f59e0b']; // Blue & Yellow
+  const COLORS = ['#3b82f6', '#f59e0b'];
 
   const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 
@@ -258,6 +257,7 @@ const ManualReportModal = ({ isOpen, onClose, onSave, drivers, vehicles }) => {
 // --- Main Component ---
 
 const Reports = ({ reports, setReports, drivers, vehicles }) => {
+  const [activeTab, setActiveTab] = useState('daily'); // 'daily' | 'futa' | 'expenses'
   const [dateOffset, setDateOffset] = useState(0);
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -266,7 +266,6 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Normalize drivers to have id and name keys (supporting MongoDB models)
   const normalizedDrivers = useMemo(() => {
     return (drivers || []).map(d => ({
       ...d,
@@ -275,7 +274,6 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
     }));
   }, [drivers]);
 
-  // Normalize vehicles to have id key
   const normalizedVehicles = useMemo(() => {
     return (vehicles || []).map(v => ({
       ...v,
@@ -283,7 +281,6 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
     }));
   }, [vehicles]);
 
-  // Fetch completed bookings and map them to daily reports
   useEffect(() => {
     const fetchBookingsAndMapToReports = async () => {
       setLoading(true);
@@ -299,15 +296,13 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
         const json = await res.json();
         const bookings = json.data || [];
         
-        // Map completed bookings to reports structure
         const mappedReports = bookings
-          .filter(trip => trip.status === 'completed')
+          .filter(trip => trip.status === 'completed' || trip.status === 'Hoàn tất')
           .map(trip => {
              const dateStr = trip.endTime 
                ? trip.endTime.split('T')[0] 
                : (trip.completedTime ? trip.completedTime.split('T')[0] : new Date(trip.updatedAt || trip.createdAt).toISOString().split('T')[0]);
              
-             // Extract driver and vehicle IDs (supporting populated objects or strings)
              const drvId = trip.driver && typeof trip.driver === 'object' ? trip.driver._id : trip.driver;
              const vehId = trip.vehicle && typeof trip.vehicle === 'object' ? trip.vehicle._id : trip.vehicle;
 
@@ -337,7 +332,6 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
     fetchBookingsAndMapToReports();
   }, [setReports]);
 
-  // Logic xử lý dữ liệu biểu đồ
   const { startDate, endDate, chartData } = useMemo(() => {
     const end = new Date();
     end.setDate(end.getDate() - dateOffset * 14);
@@ -379,7 +373,6 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
     return { startDate: start, endDate: end, chartData: Object.values(dataByDate) };
   }, [reports, normalizedDrivers, normalizedVehicles, dateOffset]);
 
-  // Logic thống kê tháng
   const monthlyStats = useMemo(() => {
     const stats = {};
     
@@ -432,269 +425,323 @@ const Reports = ({ reports, setReports, drivers, vehicles }) => {
 
   return (
     <div className="reports-page">
+      {/* Sub-tab navigation bar */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, borderBottom: '1px solid #e2e8f0', paddingBottom: 10 }}>
+        <button
+          onClick={() => setActiveTab('daily')}
+          style={{
+            padding: '9px 18px',
+            borderRadius: 6,
+            border: 'none',
+            background: activeTab === 'daily' ? '#2563eb' : '#f1f5f9',
+            color: activeTab === 'daily' ? '#ffffff' : '#475569',
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}
+        >
+          📊 Báo cáo Doanh thu & Hàng ngày
+        </button>
+        <button
+          onClick={() => setActiveTab('futa')}
+          style={{
+            padding: '9px 18px',
+            borderRadius: 6,
+            border: 'none',
+            background: activeTab === 'futa' ? '#f97316' : '#f1f5f9',
+            color: activeTab === 'futa' ? '#ffffff' : '#475569',
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}
+        >
+          🚚 Thống kê Đội xe Futa Express
+        </button>
+        <button
+          onClick={() => setActiveTab('expenses')}
+          style={{
+            padding: '9px 18px',
+            borderRadius: 6,
+            border: 'none',
+            background: activeTab === 'expenses' ? '#16a34a' : '#f1f5f9',
+            color: activeTab === 'expenses' ? '#ffffff' : '#475569',
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}
+        >
+          🧾 Đối soát Chi phí Đường trường
+        </button>
+      </div>
+
       {loading && <div style={{textAlign: 'center', padding: '10px', color: '#3b82f6'}}>Đang cập nhật dữ liệu...</div>}
       {error && <div style={{textAlign: 'center', padding: '10px', color: '#ef4444'}}>Lỗi tải báo cáo: {error}</div>}
-      
-      {selectedReport && (
-        <ReportDetailModal 
-            report={selectedReport} 
-            driver={normalizedDrivers.find(d => d.id === selectedReport.driverId)}
-            vehicle={normalizedVehicles.find(v => v.id === selectedReport.vehicleId)}
-            onClose={() => setSelectedReport(null)}
-        />
-      )}
 
-      <ManualReportModal 
-        isOpen={isManualModalOpen}
-        onClose={() => setIsManualModalOpen(false)}
-        onSave={handleCreateManualReport}
-        drivers={normalizedDrivers}
-        vehicles={normalizedVehicles}
-      />
+      {/* Tab Contents */}
+      {activeTab === 'futa' && <FutaDashboard />}
+      {activeTab === 'expenses' && <ExpenseApproval />}
 
-      {/* Section: Biểu đồ Hàng ngày */}
-      <div>
-        <div className="page-header">
-            <div className="page-title">
-                <h2>Báo cáo Hàng Ngày</h2>
-                <p>
-                    Hiển thị dữ liệu từ {startDate.toLocaleDateString('vi-VN')} đến {endDate.toLocaleDateString('vi-VN')}
-                </p>
-            </div>
-            <div className="controls-group">
-                <button 
-                    onClick={() => setIsManualModalOpen(true)} 
-                    className="btn-create-report"
-                >
-                    <PencilIcon /> Tạo báo cáo
-                </button>
-                <button onClick={() => setDateOffset(dateOffset + 1)} className="btn-filter">
-                    « 2 tuần trước
-                </button>
-                <button onClick={() => setDateOffset(0)} disabled={dateOffset === 0} className="btn-filter">
-                    Hiện tại
-                </button>
-                <button onClick={() => setDateOffset(dateOffset - 1)} disabled={dateOffset === 0} className="btn-filter">
-                    2 tuần sau »
-                </button>
-            </div>
-        </div>
-        
-        <div className="charts-grid">
-            <div className="chart-card">
-                <h3 className="chart-title">Doanh thu theo Tài xế (VNĐ)</h3>
-                <p className="chart-subtitle">Nhấn vào điểm biểu đồ để xem chi tiết</p>
-                <div className="chart-container">
-                    <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-                        <XAxis dataKey="date" />
-                        <YAxis tickFormatter={(value) => `${Number(value) / 1000000}tr`} />
-                        <Tooltip formatter={(value) => formatCurrency(value)} />
-                        <Legend />
-                        {activeDrivers.map((driver, index) => (
-                            <Line 
-                                key={driver.id} 
-                                type="monotone" 
-                                dataKey={`${driver.name}_revenue`} 
-                                name={driver.name} 
-                                stroke={driverColors[index % driverColors.length]} 
-                                strokeWidth={2}
-                                activeDot={{ r: 6, onClick: (props) => handlePointClick(props, driver.id, 'driver'), cursor: 'pointer' }}
-                            />
-                        ))}
-                    </LineChart>
-                    </ResponsiveContainer>
+      {activeTab === 'daily' && (
+        <>
+          {selectedReport && (
+            <ReportDetailModal 
+                report={selectedReport} 
+                driver={normalizedDrivers.find(d => d.id === selectedReport.driverId)}
+                vehicle={normalizedVehicles.find(v => v.id === selectedReport.vehicleId)}
+                onClose={() => setSelectedReport(null)}
+            />
+          )}
+
+          <ManualReportModal 
+            isOpen={isManualModalOpen}
+            onClose={() => setIsManualModalOpen(false)}
+            onSave={handleCreateManualReport}
+            drivers={normalizedDrivers}
+            vehicles={normalizedVehicles}
+          />
+
+          {/* Section: Biểu đồ Hàng ngày */}
+          <div>
+            <div className="page-header">
+                <div className="page-title">
+                    <h2>Báo cáo Hàng Ngày</h2>
+                    <p>
+                        Hiển thị dữ liệu từ {startDate.toLocaleDateString('vi-VN')} đến {endDate.toLocaleDateString('vi-VN')}
+                    </p>
+                </div>
+                <div className="controls-group">
+                    <button 
+                        onClick={() => setIsManualModalOpen(true)} 
+                        className="btn-create-report"
+                    >
+                        <PencilIcon /> Tạo báo cáo
+                    </button>
+                    <button onClick={() => setDateOffset(dateOffset + 1)} className="btn-filter">
+                        « 2 tuần trước
+                    </button>
+                    <button onClick={() => setDateOffset(0)} disabled={dateOffset === 0} className="btn-filter">
+                        Hiện tại
+                    </button>
+                    <button onClick={() => setDateOffset(dateOffset - 1)} disabled={dateOffset === 0} className="btn-filter">
+                        2 tuần sau »
+                    </button>
                 </div>
             </div>
-
-            <div className="chart-card">
-                <h3 className="chart-title">Doanh thu theo Xe (VNĐ)</h3>
-                 <p className="chart-subtitle">Nhấn vào cột để xem chi tiết</p>
-                 <div className="chart-container">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
+            
+            <div className="charts-grid">
+                <div className="chart-card">
+                    <h3 className="chart-title">Doanh thu theo Tài xế (VNĐ)</h3>
+                    <p className="chart-subtitle">Nhấn vào điểm biểu đồ để xem chi tiết</p>
+                    <div className="chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
                             <XAxis dataKey="date" />
                             <YAxis tickFormatter={(value) => `${Number(value) / 1000000}tr`} />
                             <Tooltip formatter={(value) => formatCurrency(value)} />
                             <Legend />
-                            {activeVehicles.map((vehicle, index) => (
-                                <Bar
-                                    key={`${vehicle.id}-rev`}
-                                    dataKey={`${vehicle.licensePlate}_revenue`}
-                                    name={vehicle.licensePlate}
-                                    fill={vehicleColors[index % vehicleColors.length]}
-                                    stackId="revenue"
-                                    onClick={(data) => handlePointClick(data, vehicle.id, 'vehicle')}
+                            {activeDrivers.map((driver, index) => (
+                                <Line 
+                                    key={driver.id} 
+                                    type="monotone" 
+                                    dataKey={`${driver.name}_revenue`} 
+                                    name={driver.name} 
+                                    stroke={driverColors[index % driverColors.length]} 
+                                    strokeWidth={2}
+                                    activeDot={{ r: 6, onClick: (props) => handlePointClick(props, driver.id, 'driver'), cursor: 'pointer' }}
+                                />
+                            ))}
+                        </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="chart-card">
+                    <h3 className="chart-title">Doanh thu theo Xe (VNĐ)</h3>
+                     <p className="chart-subtitle">Nhấn vào cột để xem chi tiết</p>
+                     <div className="chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                                <XAxis dataKey="date" />
+                                <YAxis tickFormatter={(value) => `${Number(value) / 1000000}tr`} />
+                                <Tooltip formatter={(value) => formatCurrency(value)} />
+                                <Legend />
+                                {activeVehicles.map((vehicle, index) => (
+                                    <Bar
+                                        key={`${vehicle.id}-rev`}
+                                        dataKey={`${vehicle.licensePlate}_revenue`}
+                                        name={vehicle.licensePlate}
+                                        fill={vehicleColors[index % vehicleColors.length]}
+                                        stackId="revenue"
+                                        onClick={(data) => handlePointClick(data, vehicle.id, 'vehicle')}
+                                        cursor="pointer"
+                                    />
+                                ))}
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="chart-card">
+                    <h3 className="chart-title">Số lượng Chuyến (Khách/Hàng)</h3>
+                    <p className="chart-subtitle">Nhấn vào cột để xem chi tiết</p>
+                    <div className="chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                            <XAxis dataKey="date" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            {activeDrivers.map((driver, index) => (
+                                <Bar 
+                                    key={`${driver.id}-customer`} 
+                                    stackId={driver.id} 
+                                    dataKey={`${driver.name}_customerTrips`} 
+                                    name={`${driver.name} - Khách`} 
+                                    fill={driverColors[index % driverColors.length]} 
+                                    onClick={(data) => handlePointClick(data, driver.id, 'driver')}
+                                    cursor="pointer"
+                                />
+                            ))}
+                            {activeDrivers.map((driver, index) => (
+                                <Bar 
+                                    key={`${driver.id}-cargo`} 
+                                    stackId={driver.id} 
+                                    dataKey={`${driver.name}_cargoTrips`} 
+                                    name={`${driver.name} - Hàng`} 
+                                    fill={driverColors[index % driverColors.length]} 
+                                    fillOpacity={0.6} 
+                                    onClick={(data) => handlePointClick(data, driver.id, 'driver')}
                                     cursor="pointer"
                                 />
                             ))}
                         </BarChart>
-                    </ResponsiveContainer>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="chart-card">
+                    <h3 className="chart-title">Quãng đường đi của từng xe (km)</h3>
+                    <p className="chart-subtitle">Nhấn vào điểm biểu đồ để xem chi tiết</p>
+                    <div className="chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                            <XAxis dataKey="date" />
+                            <YAxis />
+                            <Tooltip formatter={(value) => `${value.toFixed(1)} km`} />
+                            <Legend />
+                            {activeVehicles.map((vehicle, index) => (
+                                <Line 
+                                    key={vehicle.id} 
+                                    type="monotone" 
+                                    dataKey={`${vehicle.licensePlate}_distance`} 
+                                    name={vehicle.licensePlate} 
+                                    stroke={vehicleColors[index % vehicleColors.length]} 
+                                    strokeWidth={2} 
+                                    activeDot={{ r: 6, onClick: (props) => handlePointClick(props, vehicle.id, 'vehicle'), cursor: 'pointer' }}
+                                />
+                            ))}
+                        </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+          </div>
+
+          {/* Section: Thống kê Tháng */}
+          <div className="monthly-section">
+            <div className="section-header">
+                <div className="section-title">
+                    <div className="icon-box">
+                        <CalendarIcon />
+                    </div>
+                    <h2 style={{fontSize: '24px', fontWeight: 'bold', margin: 0}}>Quản lý Doanh thu Tháng</h2>
+                </div>
+                <div className="month-selectors">
+                    <select 
+                        value={selectedMonth} 
+                        onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                        className="form-select"
+                    >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                            <option key={m} value={m}>Tháng {m}</option>
+                        ))}
+                    </select>
+                     <select 
+                        value={selectedYear} 
+                        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                        className="form-select"
+                    >
+                        <option value={2024}>2024</option>
+                        <option value={2025}>2025</option>
+                    </select>
                 </div>
             </div>
 
-            <div className="chart-card">
-                <h3 className="chart-title">Số lượng Chuyến (Khách/Hàng)</h3>
-                <p className="chart-subtitle">Nhấn vào cột để xem chi tiết</p>
-                <div className="chart-container">
-                    <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        {activeDrivers.map((driver, index) => (
-                            <Bar 
-                                key={`${driver.id}-customer`} 
-                                stackId={driver.id} 
-                                dataKey={`${driver.name}_customerTrips`} 
-                                name={`${driver.name} - Khách`} 
-                                fill={driverColors[index % driverColors.length]} 
-                                onClick={(data) => handlePointClick(data, driver.id, 'driver')}
-                                cursor="pointer"
-                            />
-                        ))}
-                        {activeDrivers.map((driver, index) => (
-                            <Bar 
-                                key={`${driver.id}-cargo`} 
-                                stackId={driver.id} 
-                                dataKey={`${driver.name}_cargoTrips`} 
-                                name={`${driver.name} - Hàng`} 
-                                fill={driverColors[index % driverColors.length]} 
-                                fillOpacity={0.6} 
-                                onClick={(data) => handlePointClick(data, driver.id, 'driver')}
-                                cursor="pointer"
-                            />
-                        ))}
-                    </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-
-            <div className="chart-card">
-                <h3 className="chart-title">Quãng đường đi của từng xe (km)</h3>
-                <p className="chart-subtitle">Nhấn vào điểm biểu đồ để xem chi tiết</p>
-                <div className="chart-container">
-                    <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => `${value.toFixed(1)} km`} />
-                        <Legend />
-                        {activeVehicles.map((vehicle, index) => (
-                            <Line 
-                                key={vehicle.id} 
-                                type="monotone" 
-                                dataKey={`${vehicle.licensePlate}_distance`} 
-                                name={vehicle.licensePlate} 
-                                stroke={vehicleColors[index % vehicleColors.length]} 
-                                strokeWidth={2} 
-                                activeDot={{ r: 6, onClick: (props) => handlePointClick(props, vehicle.id, 'vehicle'), cursor: 'pointer' }}
-                            />
-                        ))}
-                    </LineChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-        </div>
-      </div>
-
-      {/* Section: Thống kê Tháng */}
-      <div className="monthly-section">
-        <div className="section-header">
-            <div className="section-title">
-                <div className="icon-box">
-                    <CalendarIcon />
-                </div>
-                <h2 style={{fontSize: '24px', fontWeight: 'bold', margin: 0}}>Quản lý Doanh thu Tháng</h2>
-            </div>
-            <div className="month-selectors">
-                <select 
-                    value={selectedMonth} 
-                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                    className="form-select"
-                >
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                        <option key={m} value={m}>Tháng {m}</option>
-                    ))}
-                </select>
-                 <select 
-                    value={selectedYear} 
-                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                    className="form-select"
-                >
-                    <option value={2024}>2024</option>
-                    <option value={2025}>2025</option>
-                </select>
-            </div>
-        </div>
-
-        <div className="table-container">
-            <div style={{overflowX: 'auto'}}>
-                <table className="data-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Xe</th>
-                            <th scope="col">Loại xe</th>
-                            <th scope="col" className="text-right">Tổng chuyến</th>
-                            <th scope="col" className="text-right">Tổng quãng đường</th>
-                            <th scope="col" className="text-right">Tổng doanh thu</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {monthlyStats.map((stat) => (
-                            <tr key={stat.vehicle.id}>
-                                <td className="vehicle-cell">
-                                    <img className="vehicle-img" src={stat.vehicle.imageUrl || 'https://via.placeholder.com/40'} alt="" />
-                                    <div>
-                                        <div className="vehicle-info-plate">{stat.vehicle.licensePlate}</div>
-                                        <div className="vehicle-info-status">{stat.vehicle.status}</div>
-                                    </div>
-                                </td>
-                                <td>
-                                    {stat.vehicle.type}
-                                </td>
-                                <td className="text-right">
-                                    {stat.trips}
-                                </td>
-                                <td className="text-right">
-                                    {stat.distance.toLocaleString('vi-VN')} km
-                                </td>
-                                <td className="text-right font-bold text-primary">
-                                    {formatCurrency(stat.revenue)}
-                                </td>
-                            </tr>
-                        ))}
-                         {monthlyStats.length === 0 && (
+            <div className="table-container">
+                <div style={{overflowX: 'auto'}}>
+                    <table className="data-table">
+                        <thead>
                             <tr>
-                                <td colSpan={5} style={{textAlign: 'center', padding: '32px', color: '#6b7280'}}>
-                                    Không có dữ liệu báo cáo cho tháng này.
+                                <th scope="col">Xe</th>
+                                <th scope="col">Loại xe</th>
+                                <th scope="col" className="text-right">Tổng chuyến</th>
+                                <th scope="col" className="text-right">Tổng quãng đường</th>
+                                <th scope="col" className="text-right">Tổng doanh thu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {monthlyStats.map((stat) => (
+                                <tr key={stat.vehicle.id}>
+                                    <td className="vehicle-cell">
+                                        <img className="vehicle-img" src={stat.vehicle.imageUrl || 'https://via.placeholder.com/40'} alt="" />
+                                        <div>
+                                            <div className="vehicle-info-plate">{stat.vehicle.licensePlate}</div>
+                                            <div className="vehicle-info-status">{stat.vehicle.status}</div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {stat.vehicle.type}
+                                    </td>
+                                    <td className="text-right">
+                                        {stat.trips}
+                                    </td>
+                                    <td className="text-right">
+                                        {stat.distance.toLocaleString('vi-VN')} km
+                                    </td>
+                                    <td className="text-right font-bold text-primary">
+                                        {formatCurrency(stat.revenue)}
+                                    </td>
+                                </tr>
+                            ))}
+                             {monthlyStats.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} style={{textAlign: 'center', padding: '32px', color: '#6b7280'}}>
+                                        Không có dữ liệu báo cáo cho tháng này.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                        <tfoot>
+                             <tr>
+                                <td colSpan={2}>TỔNG CỘNG</td>
+                                <td className="text-right">
+                                    {monthlyStats.reduce((acc, curr) => acc + curr.trips, 0)}
+                                </td>
+                                <td className="text-right">
+                                    {monthlyStats.reduce((acc, curr) => acc + curr.distance, 0).toLocaleString('vi-VN')} km
+                                </td>
+                                <td className="text-right text-primary">
+                                    {formatCurrency(monthlyStats.reduce((acc, curr) => acc + curr.revenue, 0))}
                                 </td>
                             </tr>
-                        )}
-                    </tbody>
-                    <tfoot>
-                         <tr>
-                            <td colSpan={2}>TỔNG CỘNG</td>
-                            <td className="text-right">
-                                {monthlyStats.reduce((acc, curr) => acc + curr.trips, 0)}
-                            </td>
-                            <td className="text-right">
-                                {monthlyStats.reduce((acc, curr) => acc + curr.distance, 0).toLocaleString('vi-VN')} km
-                            </td>
-                            <td className="text-right text-primary">
-                                {formatCurrency(monthlyStats.reduce((acc, curr) => acc + curr.revenue, 0))}
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

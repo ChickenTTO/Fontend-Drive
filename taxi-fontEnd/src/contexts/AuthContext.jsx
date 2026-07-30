@@ -5,38 +5,54 @@ import { ROLES } from '../constants/roles';
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const cachedUser = localStorage.getItem('user');
+    if (cachedUser) {
+      try {
+        return JSON.parse(cachedUser);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
 
-  // Load user khi refresh trang
+  // Load user khi refresh trang (F5)
   const loadUser = useCallback(async () => {
     try {
       const res = await authApi.me();
-      // Hỗ trợ cả res.data và res trực tiếp
-      const userData = res?.data || res;
-      setUser(userData);
+      const raw = res?.data || res;
+      // Server trả về { success: true, user: { ... } }
+      const userData = raw?.user || (raw?.role ? raw : null);
+
+      if (userData && (userData.role || userData.roles || userData._id || userData.id)) {
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+      } else {
+        const cachedUser = localStorage.getItem('user');
+        if (cachedUser) {
+          try {
+            setUser(JSON.parse(cachedUser));
+          } catch (e) {}
+        }
+      }
     } catch (err) {
-      // Fallback: thử đọc user từ localStorage nếu API lỗi
+      console.error('loadUser profile error:', err);
       const cachedUser = localStorage.getItem('user');
       if (cachedUser) {
         try {
           setUser(JSON.parse(cachedUser));
-        } catch {
+        } catch (e) {
           setUser(null);
         }
-      } else {
-        setUser(null);
       }
-      localStorage.removeItem('token');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('accessToken');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Chỉ load nếu có token
     const token = localStorage.getItem('authToken') || localStorage.getItem('token');
     if (token) {
       loadUser();
@@ -49,20 +65,17 @@ export function AuthProvider({ children }) {
     const res = await authApi.login(credentials);
     const data = res?.data || res;
 
-    // Lấy token linh hoạt
     const token = data?.token || data?.accessToken;
     if (token) {
       localStorage.setItem('authToken', token);
       localStorage.setItem('token', token);
     }
 
-    // Lấy user info (có thể nằm trong data.user hoặc chính data)
     const userData = data?.user || (data?.role ? data : null);
     if (userData) {
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
     } else {
-      // Nếu không có user trong response, gọi /auth/profile
       await loadUser();
     }
 
@@ -77,8 +90,6 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  // Helper: kiểm tra user có 1 trong các role cho phép không
-  // Dùng: hasRole([ROLES.ADMIN, ROLES.DISPATCHER])
   const hasRole = (allowedRoles = []) => {
     if (!allowedRoles || allowedRoles.length === 0) return true;
     if (!user) return false;
@@ -90,7 +101,6 @@ export function AuthProvider({ children }) {
     return allowedRoles.includes(userRole);
   };
 
-  // Redirect mặc định theo role sau khi đăng nhập
   const getDefaultRoute = () => {
     const userRole = user?.role || user?.roles;
     const role = Array.isArray(userRole) ? userRole[0] : userRole;
@@ -98,7 +108,7 @@ export function AuthProvider({ children }) {
       case ROLES.ACCOUNTANT:
         return '/reports';
       case ROLES.DRIVER:
-        return '/driver-portal';
+        return '/active-vehicles';
       case ROLES.USER:
       case ROLES.CUSTOMER:
         return '/user-dashboard';
@@ -125,7 +135,6 @@ export function AuthProvider({ children }) {
   );
 }
 
-// Convenience hook (cũng export từ đây để dùng nếu muốn)
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');

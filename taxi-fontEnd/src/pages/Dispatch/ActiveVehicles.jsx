@@ -6,33 +6,33 @@ import bookingApi from '../../api/bookingApi';
 import { 
   StatusIcon, ArrowLeftIcon, UserCircleIcon, 
   MapPinIcon, ClockIcon, PackageIcon 
-} from '../../components/icons'; // Đảm bảo bạn có đủ icon
+} from '../../components/icons';
 
-// --- COMPONENT: TRIP CARD (Tách ra cho gọn) ---
+// --- COMPONENT: TRIP CARD ---
 const TripCard = ({ trip, isActive, onUpdateStatus, formatCurrency, calculateDuration }) => {
     return (
         <div className="customer-item">
             <div className="customer-top">
                 <div className="customer-info">
                     <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                        <UserCircleIcon size={16} color="#6b7280" />
-                        <h4>{trip.customerName || 'Khách vãng lai'}</h4>
+                        <UserCircleIcon size={16} color="#2563eb" />
+                        <h4>{trip.customerName || trip.cargoType || 'Chuyến xe tải Futa Express'}</h4>
                     </div>
-                    <p>{trip.customerPhone || 'Không có SĐT'}</p>
+                    <p>{trip.customerPhone ? `📞 ${trip.customerPhone}` : (trip.tripCode ? `Mã: ${trip.tripCode}` : '')}</p>
                 </div>
                 <div className="trip-fare">
-                    {trip.fare ? formatCurrency(trip.fare) : '---'}
+                    {trip.fare || trip.price ? formatCurrency(trip.fare || trip.price) : (trip.cargoWeightTon ? `${trip.cargoWeightTon} Tấn` : '---')}
                 </div>
             </div>
 
             <div className="address-info">
                 <div className="address-line start">
-                    <span className="address-label">Điểm đón</span>
-                    {trip.startLocation}
+                    <span className="address-label">Bãi đi</span>
+                    {trip.startLocation || trip.startDepot?.name || trip.pickup || 'Điểm nhận hàng'}
                 </div>
                 <div className="address-line end">
-                    <span className="address-label">Điểm trả</span>
-                    {trip.endLocation}
+                    <span className="address-label">Bãi đến</span>
+                    {trip.endLocation || trip.endDepot?.name || trip.dropoff || 'Điểm giao hàng'}
                 </div>
             </div>
 
@@ -43,7 +43,7 @@ const TripCard = ({ trip, isActive, onUpdateStatus, formatCurrency, calculateDur
                         {calculateDuration(trip)}
                     </div>
                 ) : (
-                    <div className="duration-tag">---</div>
+                    <div className="duration-tag">{trip.status || 'Đang vận hành'}</div>
                 )}
 
                 {isActive ? (
@@ -52,14 +52,15 @@ const TripCard = ({ trip, isActive, onUpdateStatus, formatCurrency, calculateDur
                             className="btn-action btn-red"
                             onClick={() => {
                                 if(window.confirm('Xác nhận hủy chuyến này?')) 
-                                    onUpdateStatus(trip._id, 'cancelled');
+                                    onUpdateStatus(trip._id || trip.id, 'cancelled');
                             }}
                         >
                             Hủy chuyến
                         </button>
                         <button 
                             className="btn-action btn-green"
-                            onClick={() => onUpdateStatus(trip._id, 'completed')}
+                            style={{ background: '#16a34a', color: '#ffffff', fontWeight: 700 }}
+                            onClick={() => onUpdateStatus(trip._id || trip.id, 'Hoàn tất')}
                         >
                             ✓ Hoàn thành
                         </button>
@@ -67,10 +68,10 @@ const TripCard = ({ trip, isActive, onUpdateStatus, formatCurrency, calculateDur
                 ) : (
                     <span style={{
                         fontSize:'12px', fontWeight:'600', 
-                        color: trip.status === 'completed' ? '#10b981' : '#ef4444',
+                        color: (trip.status === 'completed' || trip.status === 'Hoàn tất') ? '#16a34a' : '#dc2626',
                         textTransform: 'capitalize'
                     }}>
-                        {trip.status === 'completed' ? 'Đã hoàn thành' : 'Đã hủy'}
+                        {(trip.status === 'completed' || trip.status === 'Hoàn tất') ? '✓ Đã hoàn thành' : 'Đã hủy'}
                     </span>
                 )}
             </div>
@@ -80,15 +81,28 @@ const TripCard = ({ trip, isActive, onUpdateStatus, formatCurrency, calculateDur
 
 // --- VIEW: DETAIL ---
 const VehicleDetailView = ({ vehicle, driver, trips, onBack, onUpdateTripStatus }) => {
-  const activeTrips = trips.filter(t => t.vehicle === vehicle._id && ['ongoing'].includes(t.status));
-  const completedTrips = trips.filter(t => t.vehicle === vehicle._id && t.status === 'completed');
-  const totalRevenue = completedTrips.reduce((sum, t) => sum + (t.fare || 0), 0);
+  const getVehicleId = (v) => typeof v === 'object' && v !== null ? (v._id || v.id) : v;
+  const currentVehicleId = vehicle._id || vehicle.id;
 
-  const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+  const vehicleTrips = trips.filter(t => getVehicleId(t.vehicle) === currentVehicleId);
+
+  const activeTrips = vehicleTrips.filter(t => 
+    ['ongoing', 'Đang vận hành', 'Đang chạy', 'in_transit', 'assigned', 'Đang chờ'].includes(t.status)
+  );
+
+  const completedTrips = vehicleTrips.filter(t => 
+    ['completed', 'Hoàn tất'].includes(t.status)
+  );
+
+  const totalRevenue = completedTrips.reduce((sum, t) => sum + (t.fare || t.price || 0), 0);
+
+  const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
 
   const calculateDuration = (trip) => {
-    if (!trip.startTime || !trip.endTime) return null;
-    const diffMs = new Date(trip.endTime).getTime() - new Date(trip.startTime).getTime();
+    if (!trip.startTime && !trip.createdAt) return null;
+    const startTimeMs = new Date(trip.startTime || trip.createdAt).getTime();
+    const endTimeMs = trip.endTime ? new Date(trip.endTime).getTime() : Date.now();
+    const diffMs = endTimeMs - startTimeMs;
     if (diffMs < 0) return null;
     const diffMins = Math.floor(diffMs / 60000);
     const hours = Math.floor(diffMins / 60);
@@ -101,7 +115,7 @@ const VehicleDetailView = ({ vehicle, driver, trips, onBack, onUpdateTripStatus 
       <div className="detail-header">
         <button onClick={onBack} className="back-btn"><ArrowLeftIcon /></button>
         <div>
-          <h2 style={{margin:0, fontSize:'20px', fontWeight:'700'}}>{vehicle.plateNumber || vehicle.licensePlate}</h2>
+          <h2 style={{margin:0, fontSize:'20px', fontWeight:'700'}}>{vehicle.plateNumber || vehicle.licensePlate} {vehicle.barcode ? `[${vehicle.barcode}]` : ''}</h2>
           <div style={{display:'flex', gap:'8px', fontSize:'14px', color:'#6b7280', marginTop:'4px'}}>
              <span>{driver?.name || driver?.fullName || 'Chưa gán tài xế'}</span>
              <span>•</span>
@@ -109,7 +123,7 @@ const VehicleDetailView = ({ vehicle, driver, trips, onBack, onUpdateTripStatus 
           </div>
         </div>
         <div style={{marginLeft:'auto', textAlign:'right'}}>
-            <span style={{fontSize:'12px', color:'#6b7280', display:'block'}}>Tổng doanh thu ngày</span>
+            <span style={{fontSize:'12px', color:'#6b7280', display:'block'}}>Tổng doanh thu chuyến</span>
             <span style={{fontSize:'20px', fontWeight:'700', color:'#2563eb'}}>{formatCurrency(totalRevenue)}</span>
         </div>
       </div>
@@ -118,13 +132,15 @@ const VehicleDetailView = ({ vehicle, driver, trips, onBack, onUpdateTripStatus 
         {/* CỘT CHUYẾN ĐANG CHẠY */}
         <div className="info-card" style={{borderColor: '#bfdbfe'}}>
             <div className="info-header blue">
-                <h3><PackageIcon size={18} /> Chuyến đang chạy</h3>
+                <h3><PackageIcon size={18} /> Chuyến đang chạy / Đã gán ({activeTrips.length})</h3>
                 <span className="badge-count" style={{color:'#1d4ed8'}}>{activeTrips.length}</span>
             </div>
             <div className="info-body">
                 {activeTrips.length > 0 ? activeTrips.map(trip => (
                     <TripCard 
-                        key={trip._id} trip={trip} isActive={true}
+                        key={trip._id || trip.id} 
+                        trip={trip} 
+                        isActive={true}
                         onUpdateStatus={onUpdateTripStatus}
                         formatCurrency={formatCurrency}
                         calculateDuration={calculateDuration}
@@ -132,7 +148,7 @@ const VehicleDetailView = ({ vehicle, driver, trips, onBack, onUpdateTripStatus 
                 )) : (
                     <div className="empty-state">
                         <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="48" alt="empty" style={{opacity:0.5}} />
-                        <p>Xe đang rảnh, chưa có chuyến nào.</p>
+                        <p>Xe đang rảnh, chưa có chuyến nào đang chạy.</p>
                     </div>
                 )}
             </div>
@@ -141,19 +157,21 @@ const VehicleDetailView = ({ vehicle, driver, trips, onBack, onUpdateTripStatus 
         {/* CỘT LỊCH SỬ HOÀN THÀNH */}
         <div className="info-card">
             <div className="info-header green">
-                <h3><ClockIcon size={18} /> Lịch sử hôm nay</h3>
+                <h3><ClockIcon size={18} /> Lịch sử hoàn thành ({completedTrips.length})</h3>
                 <span className="badge-count" style={{color:'#15803d'}}>{completedTrips.length}</span>
             </div>
             <div className="info-body">
                 {completedTrips.length > 0 ? completedTrips.map(trip => (
                     <TripCard 
-                        key={trip._id} trip={trip} isActive={false}
+                        key={trip._id || trip.id} 
+                        trip={trip} 
+                        isActive={false}
                         formatCurrency={formatCurrency}
                         calculateDuration={calculateDuration}
                     />
                 )) : (
                     <div className="empty-state">
-                        <p>Chưa có chuyến hoàn thành nào trong hôm nay.</p>
+                        <p>Chưa có chuyến hoàn thành nào.</p>
                     </div>
                 )}
             </div>
@@ -181,29 +199,26 @@ const ActiveVehicles = ({ initialVehicleId, onClearInitialVehicleId }) => {
   };
 
   useEffect(() => {
-    let mounted = true;
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const [vehRes, drvRes, tripRes] = await Promise.all([
-          vehicleApi.getAll().catch(() => ({ data: [] })),
-          driverApi.getAll().catch(() => ({ data: [] })),
-          bookingApi.getAll().catch(() => ({ data: [] }))
-        ]);
-        if (mounted) {
-          setVehicles(parseArray(vehRes));
-          setDrivers(parseArray(drvRes));
-          setTrips(parseArray(tripRes));
-        }
-      } catch (err) {
-        if (mounted) setError('Lỗi tải dữ liệu');
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
     loadData();
-    return () => { mounted = false; };
   }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [vehRes, drvRes, tripRes] = await Promise.all([
+        vehicleApi.getAll().catch(() => ({ data: [] })),
+        driverApi.getAll().catch(() => ({ data: [] })),
+        bookingApi.getAll().catch(() => ({ data: [] }))
+      ]);
+      setVehicles(parseArray(vehRes));
+      setDrivers(parseArray(drvRes));
+      setTrips(parseArray(tripRes));
+    } catch (err) {
+      setError('Lỗi tải dữ liệu');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!initialVehicleId) return;
@@ -218,10 +233,14 @@ const ActiveVehicles = ({ initialVehicleId, onClearInitialVehicleId }) => {
     try {
       setLoading(true);
       const updateData = { status: newStatus };
-      if (newStatus === 'completed') updateData.endTime = new Date().toISOString();
+      if (newStatus === 'completed' || newStatus === 'Hoàn tất') {
+        updateData.status = 'Hoàn tất';
+        updateData.endTime = new Date().toISOString();
+      }
       
       await bookingApi.update(tripId, updateData);
-      setTrips(prev => prev.map(t => t._id === tripId ? { ...t, ...updateData } : t));
+      alert(`✅ Đã cập nhật chuyến xe sang trạng thái: "${newStatus}"!`);
+      loadData();
     } catch (err) {
       alert('Lỗi cập nhật: ' + (err.response?.data?.message || err.message));
     } finally {
@@ -229,18 +248,17 @@ const ActiveVehicles = ({ initialVehicleId, onClearInitialVehicleId }) => {
     }
   };
 
-  const getVehicleStats = (vehicleId) => {
-    const vehicleTrips = trips.filter(t => t.vehicle === vehicleId);
-    const todayTrips = vehicleTrips.filter(t => ['ongoing', 'completed'].includes(t.status)).length;
-    const todayRevenue = vehicleTrips.filter(t => t.status === 'completed').reduce((sum, t) => sum + (t.fare || 0), 0);
-    return { todayTrips, todayRevenue };
+  const getVehicleId = (v) => typeof v === 'object' && v !== null ? (v._id || v.id) : v;
+
+  const getVehicleStats = (vId) => {
+    const vehicleTrips = trips.filter(t => getVehicleId(t.vehicle) === vId);
+    const todayTrips = vehicleTrips.filter(t => ['ongoing', 'Đang vận hành', 'Đang chạy', 'completed', 'Hoàn tất', 'assigned', 'Đang chờ'].includes(t.status)).length;
+    const todayRevenue = vehicleTrips.filter(t => ['completed', 'Hoàn tất'].includes(t.status)).reduce((sum, t) => sum + (t.fare || t.price || 0), 0);
+    return { todayTrips, todayRevenue, vehicleTrips };
   };
 
-  // Logic lọc xe: Xe active, hoặc xe có trip hôm nay
-  const activeVehicles = vehicles.filter(v => {
-    const stats = getVehicleStats(v._id || v.id);
-    return v.status === 'active' || v.status === 'available' || stats.todayTrips > 0;
-  }).sort((a, b) => getVehicleStats(b._id).todayTrips - getVehicleStats(a._id).todayTrips);
+  // Hiển thị tất cả đội xe hoặc các xe có chuyến
+  const activeVehicles = Array.isArray(vehicles) ? vehicles : [];
 
   const selectedVehicle = vehicles.find(v => (v._id || v.id) === detailVehicleId);
 
@@ -248,7 +266,9 @@ const ActiveVehicles = ({ initialVehicleId, onClearInitialVehicleId }) => {
     const driver = drivers.find(d => (d._id || d.id) === (selectedVehicle.driver || selectedVehicle.driverId));
     return (
       <VehicleDetailView 
-        vehicle={selectedVehicle} driver={driver} trips={trips}
+        vehicle={selectedVehicle} 
+        driver={driver} 
+        trips={trips}
         onBack={() => setDetailVehicleId(null)}
         onUpdateTripStatus={handleUpdateTripStatus}
       />
@@ -261,8 +281,8 @@ const ActiveVehicles = ({ initialVehicleId, onClearInitialVehicleId }) => {
   return (
     <div className="active-vehicles-container">
       <div className="page-header">
-        <h2>Giám sát Hoạt động</h2>
-        <p>Theo dõi trạng thái xe và các chuyến đi đang diễn ra trong thời gian thực.</p>
+        <h2>Giám sát 24/24 & Quản lý Chuyến</h2>
+        <p>Theo dõi trạng thái đội xe tải và cập nhật hoàn thành chuyến đi trực tuyến.</p>
       </div>
 
       <div className="vehicle-grid">
@@ -273,12 +293,12 @@ const ActiveVehicles = ({ initialVehicleId, onClearInitialVehicleId }) => {
           const plateNumber = vehicle.plateNumber || vehicle.licensePlate || 'N/A';
 
           return (
-            <div key={vehicleId} onClick={() => setDetailVehicleId(vehicleId)} className="vehicle-card">
+            <div key={vehicleId} onClick={() => setDetailVehicleId(vehicleId)} className="vehicle-card" style={{ cursor: 'pointer' }}>
               <div className="card-header">
-                <h3>{plateNumber}</h3>
+                <h3>{plateNumber} {vehicle.barcode ? <span style={{ fontSize: 12, color: '#f97316' }}>[{vehicle.barcode}]</span> : ''}</h3>
                 <div className={`status-badge-sm ${vehicle.status}`}>
                   <StatusIcon status={vehicle.status} size={10} />
-                  <span>{vehicle.status === 'active' ? 'Hoạt động' : vehicle.status}</span>
+                  <span>{vehicle.status || 'Sẵn sàng'}</span>
                 </div>
               </div>
               <div className="card-body">
@@ -299,12 +319,15 @@ const ActiveVehicles = ({ initialVehicleId, onClearInitialVehicleId }) => {
                         </span>
                     </div>
                 </div>
+                <div style={{ marginTop: 10, textAlign: 'center', fontSize: 12, color: '#2563eb', fontWeight: 600 }}>
+                  👉 Bấm để xem chi tiết & Hoàn thành chuyến ➔
+                </div>
               </div>
             </div>
           );
         }) : (
           <div className="empty-state" style={{gridColumn: '1/-1'}}>
-             <p>Không có xe nào đang hoạt động.</p>
+             <p>Chưa có dữ liệu xe.</p>
           </div>
         )}
       </div>

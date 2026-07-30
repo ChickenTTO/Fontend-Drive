@@ -29,7 +29,7 @@ const SidebarLink = ({ to, icon, label, onClick }) => (
   </RouterNavLink>
 );
 
-// ─── Cấu hình menu theo role ─────────────────────────────────────────────────
+// ─── Cấu hình menu gọn gàng (6 Trang chính chuẩn hóa) ─────────────────────────
 const NAV_ITEMS = [
   {
     to: "/map",
@@ -41,7 +41,7 @@ const NAV_ITEMS = [
     to: "/active-vehicles",
     tab: "active-vehicles",
     label: "Giám sát 24/24",
-    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
+    roles: [ROLES.ADMIN, ROLES.DISPATCHER, ROLES.DRIVER],
   },
   {
     to: "/vehicles",
@@ -65,7 +65,7 @@ const NAV_ITEMS = [
     to: "/reports",
     tab: "reports",
     label: "Báo cáo",
-    roles: [ROLES.ADMIN, ROLES.ACCOUNTANT],
+    roles: [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.DISPATCHER],
   },
 ];
 
@@ -114,7 +114,6 @@ const App = () => {
           'Authorization': `Bearer ${token}`
         };
 
-        // Fetch drivers, vehicles, customers in parallel
         const [drvRes, vehRes, custRes] = await Promise.all([
           fetch('http://localhost:5000/api/drivers', { headers }).then(r => r.ok ? r.json() : { data: [] }),
           fetch('http://localhost:5000/api/vehicles', { headers }).then(r => r.ok ? r.json() : { data: [] }),
@@ -164,15 +163,12 @@ const App = () => {
     navigate("/login");
   };
 
-  // Lọc menu theo role của user hiện tại
   const visibleNavItems = NAV_ITEMS.filter((item) => hasRole(item.roles));
 
-  // Role badge
   const userRole = user?.role || user?.roles;
   const userRoleLabel =
     ROLE_LABELS[Array.isArray(userRole) ? userRole[0] : userRole] || userRole || "";
 
-  // ── Sidebar content ────────────────────────────────────────────────────────
   const sidebarContent = (
     <div className="sidebar-content">
       <div className="sidebar-header">
@@ -185,7 +181,6 @@ const App = () => {
         </button>
       </div>
 
-      {/* User info */}
       {isAuthenticated && user && (
         <div
           style={{
@@ -195,7 +190,7 @@ const App = () => {
           }}
         >
           <div style={{ fontWeight: 600, fontSize: 14, opacity: 0.9 }}>
-            {user.name || user.username || user.email || "Người dùng"}
+            {user.fullName || user.name || user.username || user.email || "Người dùng"}
           </div>
           {userRoleLabel && (
             <div
@@ -213,7 +208,6 @@ const App = () => {
         </div>
       )}
 
-      {/* Navigation - chỉ hiển thị những item user có quyền */}
       <nav className="nav-menu">
         {visibleNavItems.map((item) => (
           <SidebarLink
@@ -241,7 +235,6 @@ const App = () => {
     <div className="laptop-frame">
       <div className="laptop-screen">
         <div className="app-container">
-          {/* Sidebar - chỉ render khi đã đăng nhập */}
           {isAuthenticated && (
             <aside className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
               {sidebarContent}
@@ -254,7 +247,6 @@ const App = () => {
           )}
 
           <div className="main-content">
-            {/* Mobile header */}
             {isAuthenticated && (
               <header className="mobile-header">
                 <h1 className="app-title" style={{ fontSize: "20px" }}>

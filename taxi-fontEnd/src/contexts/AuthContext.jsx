@@ -106,9 +106,13 @@ export function AuthProvider({ children }) {
     const role = Array.isArray(userRole) ? userRole[0] : userRole;
     switch (role) {
       case ROLES.ACCOUNTANT:
-        return '/reports';
+        return '/expense-approval';
       case ROLES.DRIVER:
-        return '/active-vehicles';
+        return '/driver-portal';
+      case ROLES.DISPATCHER:
+        return '/dispatch-futa';
+      case ROLES.ADMIN:
+        return '/map';
       case ROLES.USER:
       case ROLES.CUSTOMER:
         return '/user-dashboard';

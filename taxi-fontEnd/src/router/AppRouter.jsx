@@ -9,7 +9,7 @@ const RootRedirect = () => {
   return <Navigate to={getDefaultRoute()} replace />;
 };
 
-// Pages gốc của bạn
+// Pages gốc
 import Login from "../pages/Auth/Login";
 import Unauthorized from "../pages/Auth/Unauthorized";
 import OperationMap from "../pages/Dispatch/OperationMap";
@@ -20,16 +20,21 @@ import CustomerList from "../pages/Customers/CustomerList";
 import Reports from "../pages/Reports/Reports";
 import CheckBookingSchema from "../pages/Test/CheckBookingSchema";
 
-// Pages Futa Express bổ sung
+// Pages Futa Express bổ sung & chuẩn hóa 4 Role
+import StaffList from "../pages/Staff/StaffList";
+import MaintenanceLog from "../pages/Vehicles/MaintenanceLog";
+import DriverPortal from "../pages/Drivers/DriverPortal";
 import DepotList from "../pages/Vehicles/DepotList";
 import FreightDispatch from "../pages/Dispatch/FreightDispatch";
 import BarcodeHandover from "../pages/Drivers/BarcodeHandover";
 import ExpenseApproval from "../pages/Accounting/ExpenseApproval";
 import FutaDashboard from "../pages/Reports/FutaDashboard";
 
-// --- PHÂN QUYỀN ---
+// --- MA TRẬN PHÂN QUYỀN VAI TRÒ ---
+const ADMIN_ONLY = [ROLES.ADMIN];
 const ADMIN_DISPATCHER = [ROLES.ADMIN, ROLES.DISPATCHER];
 const ADMIN_ACCOUNTANT = [ROLES.ADMIN, ROLES.ACCOUNTANT];
+const DRIVER_ROLES = [ROLES.ADMIN, ROLES.DRIVER];
 const USER_ONLY = [ROLES.USER, ROLES.CUSTOMER];
 
 const ALL_ROLES = [ROLES.ADMIN, ROLES.DISPATCHER, ROLES.DRIVER, ROLES.ACCOUNTANT];
@@ -69,7 +74,37 @@ const AppRouter = ({
         }
       />
 
-      {/* Bản đồ vận hành - Form gốc */}
+      {/* 👑 ADMIN ONLY: Quản lý Nhân sự */}
+      <Route
+        path="/staff"
+        element={
+          <PrivateRoute roles={ADMIN_ONLY}>
+            <StaffList />
+          </PrivateRoute>
+        }
+      />
+
+      {/* 👑 ADMIN ONLY: Quản lý Bảo dưỡng phương tiện */}
+      <Route
+        path="/maintenance"
+        element={
+          <PrivateRoute roles={ADMIN_ONLY}>
+            <MaintenanceLog />
+          </PrivateRoute>
+        }
+      />
+
+      {/* 👨‍✈️ DRIVER / ADMIN: Cổng thông tin Tài xế */}
+      <Route
+        path="/driver-portal"
+        element={
+          <PrivateRoute roles={DRIVER_ROLES}>
+            <DriverPortal />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Bản đồ vận hành - Admin & Dispatcher */}
       <Route
         path="/map"
         element={
@@ -90,7 +125,7 @@ const AppRouter = ({
         }
       />
 
-      {/* Giám sát 24/24 - Form gốc */}
+      {/* Giám sát 24/24 */}
       <Route
         path="/active-vehicles"
         element={
@@ -110,7 +145,7 @@ const AppRouter = ({
         }
       />
 
-      {/* Quản lý xe - Form gốc của bạn */}
+      {/* Quản lý xe */}
       <Route
         path="/vehicles"
         element={
@@ -128,7 +163,7 @@ const AppRouter = ({
         }
       />
 
-      {/* Quản lý tài xế - Form gốc */}
+      {/* Quản lý tài xế */}
       <Route
         path="/drivers"
         element={
@@ -145,7 +180,7 @@ const AppRouter = ({
         }
       />
 
-      {/* Khách hàng - Form gốc */}
+      {/* Khách hàng */}
       <Route
         path="/customers"
         element={
@@ -159,7 +194,47 @@ const AppRouter = ({
         }
       />
 
-      {/* Báo cáo - Form gốc */}
+      {/* Quản lý Bãi xe */}
+      <Route
+        path="/depots"
+        element={
+          <PrivateRoute roles={ADMIN_DISPATCHER}>
+            <DepotList />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Quản lý Chuyến đi & Điều phối */}
+      <Route
+        path="/dispatch-futa"
+        element={
+          <PrivateRoute roles={ADMIN_DISPATCHER}>
+            <FreightDispatch />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Bàn giao Barcode */}
+      <Route
+        path="/barcode-handover"
+        element={
+          <PrivateRoute roles={HANDOVER_ROLES}>
+            <BarcodeHandover />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Duyệt Chi phí - Accountant & Admin */}
+      <Route
+        path="/expense-approval"
+        element={
+          <PrivateRoute roles={ADMIN_ACCOUNTANT}>
+            <ExpenseApproval />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Báo cáo thống kê & Xuất file - Accountant & Admin */}
       <Route
         path="/reports"
         element={
@@ -174,41 +249,6 @@ const AppRouter = ({
         }
       />
 
-      {/* ========================================================= */}
-      {/* CÁC CHỨC NĂNG FUTA EXPRESS (BỔ SUNG, KHÔNG ẢNH HƯỞNG FORM GỐC) */}
-      {/* ========================================================= */}
-      <Route
-        path="/depots"
-        element={
-          <PrivateRoute roles={ALL_ROLES}>
-            <DepotList />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/dispatch-futa"
-        element={
-          <PrivateRoute roles={ADMIN_DISPATCHER}>
-            <FreightDispatch />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/barcode-handover"
-        element={
-          <PrivateRoute roles={HANDOVER_ROLES}>
-            <BarcodeHandover />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/expense-approval"
-        element={
-          <PrivateRoute roles={ACCOUNTING_ROLES}>
-            <ExpenseApproval />
-          </PrivateRoute>
-        }
-      />
       <Route
         path="/dashboard-futa"
         element={

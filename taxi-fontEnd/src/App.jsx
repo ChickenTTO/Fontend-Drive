@@ -29,7 +29,7 @@ const SidebarLink = ({ to, icon, label, onClick }) => (
   </RouterNavLink>
 );
 
-// ─── Cấu hình menu gọn gàng (6 Trang chính chuẩn hóa) ─────────────────────────
+// ─── Cấu hình menu chuẩn hóa theo 4 Vai trò ─────────────────────────────────────
 const NAV_ITEMS = [
   {
     to: "/map",
@@ -38,15 +38,33 @@ const NAV_ITEMS = [
     roles: [ROLES.ADMIN, ROLES.DISPATCHER],
   },
   {
-    to: "/active-vehicles",
+    to: "/staff",
+    tab: "drivers",
+    label: "Quản lý Nhân sự",
+    roles: [ROLES.ADMIN],
+  },
+  {
+    to: "/dispatch-futa",
     tab: "active-vehicles",
-    label: "Giám sát 24/24",
-    roles: [ROLES.ADMIN, ROLES.DISPATCHER, ROLES.DRIVER],
+    label: "Chuyến đi & Điều phối",
+    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
   },
   {
     to: "/vehicles",
     tab: "vehicles",
     label: "Quản lý Xe",
+    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
+  },
+  {
+    to: "/maintenance",
+    tab: "vehicles",
+    label: "Quản lý Bảo dưỡng",
+    roles: [ROLES.ADMIN],
+  },
+  {
+    to: "/depots",
+    tab: "map",
+    label: "Quản lý Bãi xe",
     roles: [ROLES.ADMIN, ROLES.DISPATCHER],
   },
   {
@@ -62,10 +80,22 @@ const NAV_ITEMS = [
     roles: [ROLES.ADMIN, ROLES.DISPATCHER],
   },
   {
+    to: "/driver-portal",
+    tab: "active-vehicles",
+    label: "Cổng Tài xế (Nhận/Giao xe)",
+    roles: [ROLES.ADMIN, ROLES.DRIVER],
+  },
+  {
+    to: "/expense-approval",
+    tab: "reports",
+    label: "Duyệt Chi phí",
+    roles: [ROLES.ADMIN, ROLES.ACCOUNTANT],
+  },
+  {
     to: "/reports",
     tab: "reports",
-    label: "Báo cáo",
-    roles: [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.DISPATCHER],
+    label: "Báo cáo & Thống kê",
+    roles: [ROLES.ADMIN, ROLES.ACCOUNTANT],
   },
 ];
 
@@ -182,29 +212,20 @@ const App = () => {
       </div>
 
       {isAuthenticated && user && (
-        <div
-          style={{
-            padding: "10px 16px",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-            marginBottom: 8,
-          }}
-        >
-          <div style={{ fontWeight: 600, fontSize: 14, opacity: 0.9 }}>
-            {user.fullName || user.name || user.username || user.email || "Người dùng"}
-          </div>
-          {userRoleLabel && (
-            <div
-              style={{
-                fontSize: 11,
-                opacity: 0.6,
-                marginTop: 2,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-              }}
-            >
-              {userRoleLabel}
+        <div className="user-profile-sidebar">
+          <div>
+            <div className="user-name-text">
+              {user.fullName || user.name || user.username || user.email || "Người dùng"}
             </div>
-          )}
+            {userRoleLabel && (
+              <div className="user-role-badge">
+                {userRoleLabel}
+              </div>
+            )}
+          </div>
+          <button className="btn-logout-mini" onClick={handleLogout} title="Đăng xuất ngay">
+            Đăng xuất
+          </button>
         </div>
       )}
 
@@ -220,12 +241,15 @@ const App = () => {
         ))}
       </nav>
 
-      <div className="theme-toggle-container">
+      <div className="sidebar-footer">
         <button onClick={toggleTheme} className="btn-theme-toggle">
           {isDarkMode ? <SunIcon /> : <MoonIcon />}
-          <span style={{ marginLeft: "12px" }}>
+          <span style={{ marginLeft: "8px" }}>
             {isDarkMode ? "Chế độ Sáng" : "Chế độ Tối"}
           </span>
+        </button>
+        <button className="btn-logout-sidebar" onClick={handleLogout}>
+          🚪 Đăng Xuất Hệ Thống
         </button>
       </div>
     </div>
@@ -238,11 +262,6 @@ const App = () => {
           {isAuthenticated && (
             <aside className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
               {sidebarContent}
-              <div style={{ padding: "12px" }}>
-                <button className="btn-logout" onClick={handleLogout}>
-                  Đăng xuất
-                </button>
-              </div>
             </aside>
           )}
 

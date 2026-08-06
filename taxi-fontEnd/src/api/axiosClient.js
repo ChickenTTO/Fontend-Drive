@@ -53,16 +53,20 @@ axiosClient.interceptors.response.use(
     // Handle specific error cases
     if (error.response?.status === 401) {
       // Unauthorized - token invalid or expired
-      console.warn("🔐 Unauthorized - Please login again");
+      console.warn("🔐 Unauthorized - Session expired, clearing tokens & user state");
       
-      // Clear token
+      // Clear all auth tokens & cached user data
       localStorage.removeItem("token");
       localStorage.removeItem("accessToken");
       localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
       
-      // Redirect to login (adjust path as needed)
-      if (window.location.pathname !== "/login") {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      // Dispatch logout event so AuthContext resets state instantly
+      window.dispatchEvent(new Event("auth_logout"));
+
+      // Redirect to login smoothly if not already on login page
+      if (window.location.pathname !== "/login" && !window._isRedirectingToLogin) {
+        window._isRedirectingToLogin = true;
         window.location.href = "/login";
       }
     } else if (error.response?.status === 403) {

@@ -39,10 +39,31 @@ export const VehicleDispatch = () => {
   ];
 
   const mockDrivers = [
-    { _id: "d-1", fullName: "Lê Văn Định", phone: "0923456789", username: "driver_dinh", isActive: true },
-    { _id: "d-2", fullName: "Trần Nam", phone: "0912345678", username: "driver_nam", isActive: true },
-    { _id: "d-3", fullName: "Phạm Hùng", phone: "0934567890", username: "driver_hung", isActive: true },
-    { _id: "d-4", fullName: "Vũ Tuấn Anh", phone: "0904445555", username: "driver_anh", isActive: true }
+    { _id: "d-1", fullName: "Lê Văn Tài (Tài xế 01)", phone: "0903333301", username: "driver1", isActive: true },
+    { _id: "d-2", fullName: "Phạm Minh Đức (Tài xế 02)", phone: "0903333302", username: "driver2", isActive: true },
+    { _id: "d-3", fullName: "Nguyễn Hoàng Nam (Tài xế 03)", phone: "0903333303", username: "driver3", isActive: true },
+    { _id: "d-4", fullName: "Trần Quốc Bảo (Tài xế 04)", phone: "0903333304", username: "driver4", isActive: true },
+    { _id: "d-5", fullName: "Vũ Tuấn Anh (Tài xế 05)", phone: "0903333305", username: "driver5", isActive: true },
+    { _id: "d-6", fullName: "Đặng Huy Hoàng (Tài xế 06)", phone: "0903333306", username: "driver6", isActive: true },
+    { _id: "d-7", fullName: "Bùi Quang Huy (Tài xế 07)", phone: "0903333307", username: "driver7", isActive: true },
+    { _id: "d-8", fullName: "Ngô Thành Trung (Tài xế 08)", phone: "0903333308", username: "driver8", isActive: true },
+    { _id: "d-9", fullName: "Hoàng Trọng Hiếu (Tài xế 09)", phone: "0903333309", username: "driver9", isActive: true },
+    { _id: "d-10", fullName: "Đỗ Minh Trí (Tài xế 10)", phone: "0903333310", username: "driver10", isActive: true },
+    { _id: "d-11", fullName: "Nguyễn Thanh Tùng (Tài xế 11)", phone: "0903333311", username: "driver11", isActive: true },
+    { _id: "d-12", fullName: "Lý Văn Hùng (Tài xế 12)", phone: "0903333312", username: "driver12", isActive: true },
+    { _id: "d-13", fullName: "Đinh Văn Lâm (Tài xế 13)", phone: "0903333313", username: "driver13", isActive: true },
+    { _id: "d-14", fullName: "Trịnh Tấn Phát (Tài xế 14)", phone: "0903333314", username: "driver14", isActive: true },
+    { _id: "d-15", fullName: "Võ Văn Kiệt (Tài xế 15)", phone: "0903333315", username: "driver15", isActive: true },
+    { _id: "d-16", fullName: "Dương Hải Đăng (Tài xế 16)", phone: "0903333316", username: "driver16", isActive: true },
+    { _id: "d-17", fullName: "Phan Văn Nhật (Tài xế 17)", phone: "0903333317", username: "driver17", isActive: true },
+    { _id: "d-18", fullName: "Huỳnh Tấn Đạt (Tài xế 18)", phone: "0903333318", username: "driver18", isActive: true },
+    { _id: "d-19", fullName: "Mai Quốc Tuấn (Tài xế 19)", phone: "0903333319", username: "driver19", isActive: true },
+    { _id: "d-20", fullName: "Cao Minh Lộc (Tài xế 20)", phone: "0903333320", username: "driver20", isActive: true },
+    { _id: "d-21", fullName: "Nguyễn Hoàng Long (Tài xế 21)", phone: "0903333321", username: "driver21", isActive: true },
+    { _id: "d-22", fullName: "Trương Văn Thịnh (Tài xế 22)", phone: "0903333322", username: "driver22", isActive: true },
+    { _id: "d-23", fullName: "Hồ Hữu Phước (Tài xế 23)", phone: "0903333323", username: "driver23", isActive: true },
+    { _id: "d-24", fullName: "Lâm Quốc Cường (Tài xế 24)", phone: "0903333324", username: "driver24", isActive: true },
+    { _id: "d-25", fullName: "Đào Văn Sang (Tài xế 25)", phone: "0903333325", username: "driver25", isActive: true }
   ];
 
   const mockTrips = [
@@ -104,29 +125,33 @@ export const VehicleDispatch = () => {
         freightTripApi.getAllTrips().catch(() => ({ data: { data: [] } }))
       ]);
 
-      if (depRes.data?.data && depRes.data.data.length > 0) {
-        setDepots(depRes.data.data);
-        setSelectedDepotIdForDispatch(depRes.data.data[0]._id);
+      const depotsData = depRes.data?.data || (Array.isArray(depRes.data) ? depRes.data : null);
+      if (depotsData && depotsData.length > 0) {
+        setDepots(depotsData);
+        setSelectedDepotIdForDispatch(depotsData[0]._id);
       } else {
         setDepots(mockDepots);
         setSelectedDepotIdForDispatch(mockDepots[0]._id);
       }
 
-      if (drvRes.data?.data && drvRes.data.data.length > 0) {
-        setDrivers(drvRes.data.data);
+      const driversData = drvRes.data?.data || (Array.isArray(drvRes.data) ? drvRes.data : null);
+      if (driversData && driversData.length > 0) {
+        setDrivers(driversData);
       } else {
         setDrivers(mockDrivers);
       }
 
-      if (vehRes.data?.data && vehRes.data.data.length > 0) {
-        setVehicles(vehRes.data.data);
+      const vehiclesData = vehRes.data?.data || (Array.isArray(vehRes.data) ? vehRes.data : null);
+      if (vehiclesData && vehiclesData.length > 0) {
+        setVehicles(vehiclesData);
       } else {
         setVehicles(mockVehicles);
       }
 
-      if (tripRes.data?.data && tripRes.data.data.length > 0) {
-        setTrips(tripRes.data.data);
-        const pending = tripRes.data.data.find(t => t.status === "Đang chờ");
+      const tripsData = tripRes.data?.data || (Array.isArray(tripRes.data) ? tripRes.data : null);
+      if (tripsData && tripsData.length > 0) {
+        setTrips(tripsData);
+        const pending = tripsData.find(t => t.status === "Đang chờ");
         if (pending) setSelectedTripIdForDispatch(pending._id);
       } else {
         setTrips(mockTrips);

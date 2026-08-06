@@ -151,21 +151,82 @@ export const DriverPortal = () => {
     }
   };
 
-  // Driver actions: Accept & Start Trip
-  const handleStartTrip = async (tripId) => {
+  // State tracking sequential handovers: { [tripId]: { checkedOut: boolean, checkedIn: boolean } }
+  const [handoverState, setHandoverState] = useState(() => {
     try {
-      const res = await freightTripApi.updateTripStatus(tripId, "Đang vận hành").catch(() => null);
+      const saved = localStorage.getItem("driver_handover_state");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [handoverParams, setHandoverParams] = useState({
+    barcode: "",
+    type: "CHECK_OUT",
+    trip: null
+  });
+
+  const handleHandoverCompleted = (type, tripId, barcode) => {
+    if (!tripId) return;
+    setHandoverState(prev => {
+      const updatedTripState = {
+        ...(prev[tripId] || {}),
+        [type === "CHECK_OUT" ? "checkedOut" : "checkedIn"]: true
+      };
+      const newState = { ...prev, [tripId]: updatedTripState };
+      try {
+        localStorage.setItem("driver_handover_state", JSON.stringify(newState));
+      } catch (e) {}
+      return newState;
+    });
+  };
+
+  const handleGoToHandover = (trip, type) => {
+    const barcode = trip.vehicle?.barcode || "FUTA-TRK-001";
+    setHandoverParams({
+      barcode,
+      type,
+      trip
+    });
+    setActiveTab("handover");
+  };
+
+  // Driver actions: Accept & Start Trip
+  const handleStartTrip = async (trip) => {
+    const tripId = trip._id;
+    const isCheckedOut = handoverState[tripId]?.checkedOut;
+
+    if (!isCheckedOut) {
+      if (window.confirm("⚠️ QUY TRÌNH BẮT BỘC: Bạn phải nhận xe bến đi (Check-out Barcode) trước khi nhận chuyến!\n\nBấm OK để chuyển đến màn hình Nhận xe ngay.")) {
+        handleGoToHandover(trip, "CHECK_OUT");
+      }
+      return;
+    }
+
+    try {
+      await freightTripApi.updateTripStatus(tripId, "Đang vận hành").catch(() => null);
       setDriverTrips(prev => prev.map(t => t._id === tripId ? { ...t, status: "Đang vận hành" } : t));
-      alert("🚀 ĐÃ CHẤP NHẬN & BẮT ĐẦU CHUYẾN ĐỊ THÀNH CÔNG!");
+      alert("🚀 BƯỚC 2 HOÀN TẤT: Đã chấp nhận & bắt đầu chuyến đi!");
       fetchDriverTrips();
     } catch (err) {
       setDriverTrips(prev => prev.map(t => t._id === tripId ? { ...t, status: "Đang vận hành" } : t));
-      alert("🚀 ĐÃ CHẤP NHẬN & BẮT ĐẦU CHUYẾN ĐỊ THÀNH CÔNG!");
+      alert("🚀 BƯỚC 2 HOÀN TẤT: Đã chấp nhận & bắt đầu chuyến đi!");
     }
   };
 
   // Driver actions: Complete Trip
   const handleOpenCompleteModal = (trip) => {
+    const tripId = trip._id;
+    const isCheckedIn = handoverState[tripId]?.checkedIn;
+
+    if (!isCheckedIn) {
+      if (window.confirm("⚠️ QUY TRÌNH BẮT BỘC: Bạn phải trả xe về bãi (Check-in Barcode) trước khi xác nhận hoàn thành chuyến!\n\nBấm OK để chuyển đến màn hình Trả xe ngay.")) {
+        handleGoToHandover(trip, "CHECK_IN");
+      }
+      return;
+    }
+
     setSelectedTripToComplete(trip);
     setCompletionData({
       finalDistance: trip.distance || 120,
@@ -183,12 +244,12 @@ export const DriverPortal = () => {
       await freightTripApi.updateTripStatus(selectedTripToComplete._id, "Hoàn thành").catch(() => null);
       setDriverTrips(prev => prev.map(t => t._id === selectedTripToComplete._id ? { ...t, status: "Hoàn thành" } : t));
       setShowCompleteModal(false);
-      alert("🎉 CHÚC MỪNG! ĐÃ XÁC NHẬN HOÀN THÀNH CHUYẾN ĐỊ THÀNH CÔNG!");
+      alert("🎉 BƯỚC 4 HOÀN TẤT: Đã xác nhận hoàn thành chuyến đi an toàn!");
       fetchDriverTrips();
     } catch (err) {
       setDriverTrips(prev => prev.map(t => t._id === selectedTripToComplete._id ? { ...t, status: "Hoàn thành" } : t));
       setShowCompleteModal(false);
-      alert("🎉 CHÚC MỪNG! ĐÃ XÁC NHẬN HOÀN THÀNH CHUYẾN ĐỊ THÀNH CÔNG!");
+      alert("🎉 BƯỚC 4 HOÀN TẤT: Đã xác nhận hoàn thành chuyến đi an toàn!");
     }
   };
 
@@ -213,10 +274,10 @@ export const DriverPortal = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case "Đang chờ":
-        return <span style={{ background: "#fef3c7", color: "#d97706", padding: "4px 12px", borderRadius: 20, fontWeight: 700, fontSize: 13 }}>⏳ Đang chờ (Cần chấp nhận)</span>;
+        return <span style={{ background: "#fef3c7", color: "#d97706", padding: "4px 12px", borderRadius: 20, fontWeight: 700, fontSize: 13 }}>⏳ Đang chờ (Cần nhận xe & chấp nhận)</span>;
       case "Đang vận hành":
       case "in_progress":
-        return <span style={{ background: "#dbeafe", color: "#2563eb", padding: "4px 12px", borderRadius: 20, fontWeight: 700, fontSize: 13 }}>🚚 Đang vận hành trên đường</span>;
+        return <span style={{ background: "#dbeafe", color: "#2563eb", padding: "4px 12px", borderRadius: 20, fontWeight: 700, fontSize: 13 }}>🚚 Đang vận hành (Cần trả xe khi đến bến)</span>;
       case "Hoàn thành":
       case "completed":
         return <span style={{ background: "#dcfce7", color: "#16a34a", padding: "4px 12px", borderRadius: 20, fontWeight: 700, fontSize: 13 }}>✅ Đã Hoàn Thành Chuyến</span>;
@@ -347,111 +408,226 @@ export const DriverPortal = () => {
           {loadingTrips && <div style={{ padding: 30, textAlign: "center", color: "#64748b" }}>Đang tải danh sách chuyến đi của bạn...</div>}
 
           {/* Render Trips */}
-          {!loadingTrips && displayedTrips.map((trip) => (
-            <div
-              key={trip._id}
-              style={{
-                background: "#ffffff",
-                padding: 20,
-                borderRadius: 12,
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, borderBottom: "1px solid #f1f5f9", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
-                <div>
-                  <span style={{ fontSize: 17, fontWeight: 800, color: "#ea580c" }}>Mã chuyến: {trip.tripCode}</span>
-                  {trip.customerName && <span style={{ fontSize: 13, color: "#64748b", marginLeft: 8 }}>• Người gửi: {trip.customerName} ({trip.customerPhone || "N/A"})</span>}
+          {!loadingTrips && displayedTrips.map((trip) => {
+            const tripId = trip._id;
+            const stateObj = handoverState[tripId] || {};
+            const isCheckedOut = stateObj.checkedOut || trip.status === "Đang vận hành" || trip.status === "in_progress" || trip.status === "Hoàn thành" || trip.status === "completed";
+            const isStarted = trip.status === "Đang vận hành" || trip.status === "in_progress" || trip.status === "Hoàn thành" || trip.status === "completed";
+            const isCheckedIn = stateObj.checkedIn || trip.status === "Hoàn thành" || trip.status === "completed";
+            const isCompleted = trip.status === "Hoàn thành" || trip.status === "completed";
+
+            return (
+              <div
+                key={tripId}
+                style={{
+                  background: "#ffffff",
+                  padding: 20,
+                  borderRadius: 12,
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, borderBottom: "1px solid #f1f5f9", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
+                  <div>
+                    <span style={{ fontSize: 17, fontWeight: 800, color: "#ea580c" }}>Mã chuyến: {trip.tripCode}</span>
+                    {trip.customerName && <span style={{ fontSize: 13, color: "#64748b", marginLeft: 8 }}>• Người gửi: {trip.customerName} ({trip.customerPhone || "N/A"})</span>}
+                  </div>
+                  {getStatusBadge(trip.status)}
                 </div>
-                {getStatusBadge(trip.status)}
+
+                {/* 🔄 STEP-BY-STEP PROGRESSION STEPPER BAR */}
+                <div style={{
+                  background: "#f8fafc",
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  marginBottom: 14,
+                  border: "1px solid #cbd5e1",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 6,
+                  flexWrap: "wrap"
+                }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a" }}>
+                    📋 Quy trình vận hành bắt buộc:
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, flexWrap: "wrap" }}>
+                    <span style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      background: isCheckedOut ? "#dcfce7" : "#fff7ed",
+                      color: isCheckedOut ? "#15803d" : "#c2410c",
+                      border: `1px solid ${isCheckedOut ? "#bbf7d0" : "#ffedd5"}`
+                    }}>
+                      {isCheckedOut ? "✓ B1: Nhận Xe" : "B1: Nhận Xe (Bắt buộc)"}
+                    </span>
+                    <span style={{ color: "#94a3b8" }}>➔</span>
+
+                    <span style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      background: isStarted ? "#dcfce7" : isCheckedOut ? "#dbeafe" : "#f1f5f9",
+                      color: isStarted ? "#15803d" : isCheckedOut ? "#1d4ed8" : "#94a3b8",
+                      border: `1px solid ${isStarted ? "#bbf7d0" : isCheckedOut ? "#bfdbfe" : "#cbd5e1"}`
+                    }}>
+                      {isStarted ? "✓ B2: Bắt Đầu Chuyến" : "B2: Bắt Đầu Chuyến"}
+                    </span>
+                    <span style={{ color: "#94a3b8" }}>➔</span>
+
+                    <span style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      background: isCheckedIn ? "#dcfce7" : isStarted ? "#fff7ed" : "#f1f5f9",
+                      color: isCheckedIn ? "#15803d" : isStarted ? "#c2410c" : "#94a3b8",
+                      border: `1px solid ${isCheckedIn ? "#bbf7d0" : isStarted ? "#ffedd5" : "#cbd5e1"}`
+                    }}>
+                      {isCheckedIn ? "✓ B3: Trả Xe" : "B3: Trả Xe (Bắt buộc)"}
+                    </span>
+                    <span style={{ color: "#94a3b8" }}>➔</span>
+
+                    <span style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      background: isCompleted ? "#dcfce7" : isCheckedIn ? "#dbeafe" : "#f1f5f9",
+                      color: isCompleted ? "#15803d" : isCheckedIn ? "#1d4ed8" : "#94a3b8",
+                      border: `1px solid ${isCompleted ? "#bbf7d0" : isCheckedIn ? "#bfdbfe" : "#cbd5e1"}`
+                    }}>
+                      {isCompleted ? "✓ B4: Hoàn Thành" : "B4: Hoàn Thành"}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, fontSize: 14, lineHeight: "1.8" }}>
+                  <div style={{ background: "#f8fafc", padding: 14, borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2563eb", marginTop: 0, marginBottom: 8 }}>🚚 Phương tiện & Hàng hóa</h4>
+                    <div>Dòng xe: <strong>{trip.vehicle?.brand || "Xe tải Futa Express"}</strong></div>
+                    <div>Biển số xe: <strong style={{ color: "#ea580c", fontSize: 16 }}>{trip.vehicle?.licensePlate || "51C-888.99"}</strong></div>
+                    <div>Barcode: <code>{trip.vehicle?.barcode || "FUTA-TRK-001"}</code></div>
+                    <div>Loại hàng hóa: <strong>{trip.cargoType}</strong></div>
+                    <div>Khối lượng: <strong>{trip.cargoWeightTon ? `${trip.cargoWeightTon} Tấn` : "N/A"}</strong></div>
+                  </div>
+
+                  <div style={{ background: "#f8fafc", padding: 14, borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: "#16a34a", marginTop: 0, marginBottom: 8 }}>📍 Lộ trình & Thời gian</h4>
+                    <div>Tuyến: <strong>[{trip.startDepot?.code || "ĐI"}] {trip.startDepot?.name || trip.startLocation} ➔ [{trip.endDepot?.code || "ĐẾN"}] {trip.endDepot?.name || trip.endLocation}</strong></div>
+                    <div>Điểm đi: {trip.startLocation || "Tại bãi"}</div>
+                    <div>Điểm đến: {trip.endLocation || "Tại bãi"}</div>
+                    <div>Giờ xuất bến dự kiến: <strong>{trip.startTime ? String(trip.startTime).substring(0, 16) : "N/A"}</strong></div>
+                    <div>Cước phí vận chuyển: <strong style={{ color: "#16a34a" }}>{(trip.fare || 0).toLocaleString()} VNĐ</strong></div>
+                  </div>
+                </div>
+
+                {/* STRICT SEQUENTIAL ACTION BUTTONS FOR DRIVER */}
+                <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px dashed #cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ fontSize: 12.5, color: "#64748b" }}>
+                    💡 <strong>Nghiệp vụ:</strong> [1] Nhận xe ➔ [2] Bắt đầu chuyến ➔ [3] Trả xe ➔ [4] Hoàn thành.
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {/* TRẠNG THÁI 1: BƯỚC 1 - NHẬN XE CHECK-OUT & BƯỚC 2 - BẮT ĐẦU CHUYẾN */}
+                    {trip.status === "Đang chờ" && (
+                      <>
+                        <button
+                          onClick={() => handleGoToHandover(trip, "CHECK_OUT")}
+                          style={{
+                            padding: "9px 16px",
+                            background: isCheckedOut ? "#f0fdf4" : "#f97316",
+                            color: isCheckedOut ? "#16a34a" : "#ffffff",
+                            border: `1px solid ${isCheckedOut ? "#bbf7d0" : "#ea580c"}`,
+                            borderRadius: 8,
+                            fontWeight: 700,
+                            fontSize: 13,
+                            cursor: "pointer"
+                          }}
+                        >
+                          {isCheckedOut ? "✓ B1: Đã Nhận Xe (Check-out)" : "📱 B1: Nhận Xe (Check-out Barcode)"}
+                        </button>
+
+                        <button
+                          onClick={() => handleStartTrip(trip)}
+                          style={{
+                            padding: "9px 18px",
+                            background: isCheckedOut ? "linear-gradient(135deg, #2563eb, #1d4ed8)" : "#cbd5e1",
+                            color: isCheckedOut ? "#ffffff" : "#64748b",
+                            border: "none",
+                            borderRadius: 8,
+                            fontWeight: 800,
+                            fontSize: 13,
+                            cursor: isCheckedOut ? "pointer" : "not-allowed",
+                            boxShadow: isCheckedOut ? "0 4px 10px rgba(37,99,235,0.3)" : "none"
+                          }}
+                          title={!isCheckedOut ? "Phải hoàn thành Bước 1: Nhận xe (Check-out) trước!" : ""}
+                        >
+                          {isCheckedOut ? "🚀 B2: Chấp Nhận & Bắt Đầu Chuyến" : "🔒 B2: Cần Nhận Xe Trước"}
+                        </button>
+                      </>
+                    )}
+
+                    {/* TRẠNG THÁI 2: BƯỚC 3 - TRẢ XE CHECK-IN & BƯỚC 4 - HOÀN THÀNH CHUYẾN */}
+                    {(trip.status === "Đang vận hành" || trip.status === "in_progress") && (
+                      <>
+                        <button
+                          onClick={() => handleGoToHandover(trip, "CHECK_IN")}
+                          style={{
+                            padding: "9px 16px",
+                            background: isCheckedIn ? "#f0fdf4" : "#f97316",
+                            color: isCheckedIn ? "#16a34a" : "#ffffff",
+                            border: `1px solid ${isCheckedIn ? "#bbf7d0" : "#ea580c"}`,
+                            borderRadius: 8,
+                            fontWeight: 700,
+                            fontSize: 13,
+                            cursor: "pointer"
+                          }}
+                        >
+                          {isCheckedIn ? "✓ B3: Đã Trả Xe (Check-in)" : "📱 B3: Trả Xe (Check-in Barcode)"}
+                        </button>
+
+                        <button
+                          onClick={() => handleOpenCompleteModal(trip)}
+                          style={{
+                            padding: "9px 18px",
+                            background: isCheckedIn ? "linear-gradient(135deg, #16a34a, #15803d)" : "#cbd5e1",
+                            color: isCheckedIn ? "#ffffff" : "#64748b",
+                            border: "none",
+                            borderRadius: 8,
+                            fontWeight: 800,
+                            fontSize: 13,
+                            cursor: isCheckedIn ? "pointer" : "not-allowed",
+                            boxShadow: isCheckedIn ? "0 4px 10px rgba(22,163,74,0.3)" : "none"
+                          }}
+                          title={!isCheckedIn ? "Phải hoàn thành Bước 3: Trả xe (Check-in) trước!" : ""}
+                        >
+                          {isCheckedIn ? "🏁 B4: Xác Nhận Hoàn Thành Chuyến" : "🔒 B4: Cần Trả Xe Trước"}
+                        </button>
+                      </>
+                    )}
+
+                    {(trip.status === "Hoàn thành" || trip.status === "completed") && (
+                      <button
+                        disabled
+                        style={{
+                          padding: "9px 18px",
+                          background: "#f0fdf4",
+                          color: "#16a34a",
+                          border: "1px solid #bbf7d0",
+                          borderRadius: 8,
+                          fontWeight: 800,
+                          fontSize: 13,
+                          cursor: "default"
+                        }}
+                      >
+                        🎉 Chuyến Đi Đã Hoàn Thành Rực Rỡ
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, fontSize: 14, lineHeight: "1.8" }}>
-                <div style={{ background: "#f8fafc", padding: 14, borderRadius: 8, border: "1px solid #e2e8f0" }}>
-                  <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2563eb", marginTop: 0, marginBottom: 8 }}>🚚 Phương tiện & Hàng hóa</h4>
-                  <div>Dòng xe: <strong>{trip.vehicle?.brand || "Xe tải Futa Express"}</strong></div>
-                  <div>Biển số xe: <strong style={{ color: "#ea580c", fontSize: 16 }}>{trip.vehicle?.licensePlate || "51C-888.99"}</strong></div>
-                  <div>Barcode: <code>{trip.vehicle?.barcode || "FUTA-TRK-001"}</code></div>
-                  <div>Loại hàng hóa: <strong>{trip.cargoType}</strong></div>
-                  <div>Khối lượng: <strong>{trip.cargoWeightTon ? `${trip.cargoWeightTon} Tấn` : "N/A"}</strong></div>
-                </div>
-
-                <div style={{ background: "#f8fafc", padding: 14, borderRadius: 8, border: "1px solid #e2e8f0" }}>
-                  <h4 style={{ fontSize: 14, fontWeight: 700, color: "#16a34a", marginTop: 0, marginBottom: 8 }}>📍 Lộ trình & Thời gian</h4>
-                  <div>Tuyến: <strong>[{trip.startDepot?.code || "ĐI"}] {trip.startDepot?.name || trip.startLocation} ➔ [{trip.endDepot?.code || "ĐẾN"}] {trip.endDepot?.name || trip.endLocation}</strong></div>
-                  <div>Điểm đi: {trip.startLocation || "Tại bãi"}</div>
-                  <div>Điểm đến: {trip.endLocation || "Tại bãi"}</div>
-                  <div>Giờ xuất bến dự kiến: <strong>{trip.startTime ? String(trip.startTime).substring(0, 16) : "N/A"}</strong></div>
-                  <div>Cước phí vận chuyển: <strong style={{ color: "#16a34a" }}>{(trip.fare || 0).toLocaleString()} VNĐ</strong></div>
-                </div>
-              </div>
-
-              {/* ACTION BUTTONS FOR DRIVER */}
-              <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px dashed #cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-                <div style={{ fontSize: 12.5, color: "#64748b" }}>
-                  💡 <strong>Thao tác:</strong> Chấp nhận nhận lệnh chuyến đi và bấm Hoàn thành khi xe cập bến.
-                </div>
-
-                <div style={{ display: "flex", gap: 10 }}>
-                  {trip.status === "Đang chờ" && (
-                    <button
-                      onClick={() => handleStartTrip(trip._id)}
-                      style={{
-                        padding: "10px 20px",
-                        background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-                        color: "#ffffff",
-                        border: "none",
-                        borderRadius: 8,
-                        fontWeight: 800,
-                        fontSize: 14,
-                        cursor: "pointer",
-                        boxShadow: "0 4px 10px rgba(37,99,235,0.3)"
-                      }}
-                    >
-                      🚀 Chấp Nhận & Bắt Đầu Chuyến Đi
-                    </button>
-                  )}
-
-                  {(trip.status === "Đang vận hành" || trip.status === "in_progress") && (
-                    <button
-                      onClick={() => handleOpenCompleteModal(trip)}
-                      style={{
-                        padding: "10px 20px",
-                        background: "linear-gradient(135deg, #16a34a, #15803d)",
-                        color: "#ffffff",
-                        border: "none",
-                        borderRadius: 8,
-                        fontWeight: 800,
-                        fontSize: 14,
-                        cursor: "pointer",
-                        boxShadow: "0 4px 10px rgba(22,163,74,0.3)"
-                      }}
-                    >
-                      🏁 Xác Nhận Hoàn Thành Chuyến Đi
-                    </button>
-                  )}
-
-                  {(trip.status === "Hoàn thành" || trip.status === "completed") && (
-                    <button
-                      disabled
-                      style={{
-                        padding: "10px 20px",
-                        background: "#f0fdf4",
-                        color: "#16a34a",
-                        border: "1px solid #bbf7d0",
-                        borderRadius: 8,
-                        fontWeight: 800,
-                        fontSize: 14,
-                        cursor: "default"
-                      }}
-                    >
-                      🎉 Chuyến Đi Đã Hoàn Thành
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {!loadingTrips && displayedTrips.length === 0 && (
             <div style={{ padding: 40, textAlign: "center", color: "#64748b", background: "#ffffff", borderRadius: 10, border: "1px solid #e2e8f0" }}>
@@ -535,7 +711,14 @@ export const DriverPortal = () => {
 
       {/* TAB 2: Barcode Handover Component */}
       {activeTab === "handover" && (
-        <BarcodeHandover />
+        <BarcodeHandover
+          initialBarcode={handoverParams.barcode}
+          initialType={handoverParams.type}
+          tripToHandover={handoverParams.trip}
+          onHandoverSuccess={(type, tripId, barcode) => {
+            handleHandoverCompleted(type, tripId, barcode);
+          }}
+        />
       )}
 
       {/* TAB 3: Driver Expenses */}

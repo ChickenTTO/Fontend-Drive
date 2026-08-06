@@ -39,17 +39,33 @@ export function AuthProvider({ children }) {
       }
     } catch (err) {
       console.error('loadUser profile error:', err);
-      const cachedUser = localStorage.getItem('user');
-      if (cachedUser) {
-        try {
-          setUser(JSON.parse(cachedUser));
-        } catch (e) {
-          setUser(null);
+      if (err.response?.status === 401 || err.status === 401) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('accessToken');
+        setUser(null);
+      } else {
+        const cachedUser = localStorage.getItem('user');
+        if (cachedUser) {
+          try {
+            setUser(JSON.parse(cachedUser));
+          } catch (e) {
+            setUser(null);
+          }
         }
       }
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      setUser(null);
+    };
+    window.addEventListener('auth_logout', handleAuthLogout);
+    return () => window.removeEventListener('auth_logout', handleAuthLogout);
   }, []);
 
   useEffect(() => {

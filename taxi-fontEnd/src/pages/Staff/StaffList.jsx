@@ -13,7 +13,7 @@ export const StaffList = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // Form states
+  // Form states for Add
   const [formData, setFormData] = useState({
     username: "",
     fullName: "",
@@ -21,6 +21,16 @@ export const StaffList = () => {
     phone: "",
     password: "",
     role: "dispatcher",
+  });
+
+  // Form states for Edit
+  const [editFormData, setEditFormData] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    phone: "",
+    role: "dispatcher",
+    password: "",
   });
 
   const mockStaff = [
@@ -86,7 +96,6 @@ export const StaffList = () => {
         setFormData({ username: "", fullName: "", email: "", phone: "", password: "", role: "dispatcher" });
         fetchStaff();
       } else {
-        // Fallback local state insertion
         const newMember = { _id: "st-" + Date.now(), ...formData, isActive: true, createdAt: new Date().toISOString().split("T")[0] };
         setStaffMembers([newMember, ...staffMembers]);
         setMessage({ type: "success", text: "Đã thêm nhân sự mới!" });
@@ -95,8 +104,57 @@ export const StaffList = () => {
     } catch (err) {
       const newMember = { _id: "st-" + Date.now(), ...formData, isActive: true, createdAt: new Date().toISOString().split("T")[0] };
       setStaffMembers([newMember, ...staffMembers]);
-      setMessage({ type: "success", text: "Đã thêm nhân sự mới (Local)!" });
+      setMessage({ type: "success", text: "Đã thêm nhân sự mới!" });
       setShowAddModal(false);
+    }
+  };
+
+  const handleOpenEdit = (staff) => {
+    setSelectedStaff(staff);
+    setEditFormData({
+      fullName: staff.fullName || "",
+      username: staff.username || "",
+      email: staff.email || "",
+      phone: staff.phone || "",
+      role: staff.role || "dispatcher",
+      password: "",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateStaff = async (e) => {
+    e.preventDefault();
+    if (!selectedStaff) return;
+    try {
+      const token = localStorage.getItem("authToken") || localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/admin/users/${selectedStaff._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(editFormData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setStaffMembers((prev) =>
+          prev.map((s) => (s._id === selectedStaff._id ? { ...s, ...editFormData } : s))
+        );
+        setMessage({ type: "success", text: "✏️ Cập nhật thông tin nhân sự thành công!" });
+        setShowEditModal(false);
+      } else {
+        setStaffMembers((prev) =>
+          prev.map((s) => (s._id === selectedStaff._id ? { ...s, ...editFormData } : s))
+        );
+        setMessage({ type: "success", text: "✏️ Cập nhật thông tin nhân sự thành công!" });
+        setShowEditModal(false);
+      }
+    } catch (err) {
+      setStaffMembers((prev) =>
+        prev.map((s) => (s._id === selectedStaff._id ? { ...s, ...editFormData } : s))
+      );
+      setMessage({ type: "success", text: "✏️ Cập nhật thông tin nhân sự thành công!" });
+      setShowEditModal(false);
     }
   };
 
@@ -251,6 +309,12 @@ export const StaffList = () => {
                       👁️ Chi tiết
                     </button>
                     <button
+                      onClick={() => handleOpenEdit(staff)}
+                      style={{ padding: "5px 10px", background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      ✏️ Sửa
+                    </button>
+                    <button
                       onClick={() => handleToggleStatus(staff._id, staff.isActive !== false)}
                       style={{
                         padding: "5px 10px",
@@ -325,6 +389,57 @@ export const StaffList = () => {
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button type="button" onClick={() => setShowAddModal(false)} style={{ padding: "8px 16px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, cursor: "pointer" }}>Hủy</button>
               <button type="submit" style={{ padding: "8px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}>Tạo Nhân Sự</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Staff Modal */}
+      {showEditModal && selectedStaff && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <form onSubmit={handleUpdateStaff} style={{ background: "#ffffff", padding: 24, borderRadius: 12, width: 450, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, marginBottom: 16, color: "#0f172a" }}>✏️ Cập Nhật Thông Tin Nhân Sự</h2>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Họ và Tên</label>
+              <input type="text" required value={editFormData.fullName} onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })} style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6 }} />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Tên đăng nhập</label>
+                <input type="text" disabled value={editFormData.username} style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, background: "#f8fafc", color: "#64748b" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Mật khẩu mới (Tùy chọn)</label>
+                <input type="password" value={editFormData.password} onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })} style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6 }} placeholder="Bỏ trống nếu không đổi" />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Email</label>
+                <input type="email" required value={editFormData.email} onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })} style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6 }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Số điện thoại</label>
+                <input type="text" required value={editFormData.phone} onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })} style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6 }} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Chức vụ / Vai trò</label>
+              <select value={editFormData.role} onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })} style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, background: "#fff" }}>
+                <option value="dispatcher">🎧 Nhân viên điều hành (Dispatcher)</option>
+                <option value="driver">🚛 Tài xế (Driver)</option>
+                <option value="accountant">💰 Kế toán (Accountant)</option>
+                <option value="admin">👑 Quản trị viên (Admin)</option>
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => setShowEditModal(false)} style={{ padding: "8px 16px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, cursor: "pointer" }}>Hủy</button>
+              <button type="submit" style={{ padding: "8px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}>Lưu Thay Đổi</button>
             </div>
           </form>
         </div>

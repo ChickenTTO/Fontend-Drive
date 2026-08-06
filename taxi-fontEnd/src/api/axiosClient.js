@@ -52,22 +52,24 @@ axiosClient.interceptors.response.use(
 
     // Handle specific error cases
     if (error.response?.status === 401) {
-      // Unauthorized - token invalid or expired
-      console.warn("🔐 Unauthorized - Session expired, clearing tokens & user state");
+      console.warn("🔐 Unauthorized request:", error.config?.url);
       
-      // Clear all auth tokens & cached user data
-      localStorage.removeItem("token");
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      
-      // Dispatch logout event so AuthContext resets state instantly
-      window.dispatchEvent(new Event("auth_logout"));
+      const isAuthCheckRoute = error.config?.url?.includes("/auth/me") || error.config?.url?.includes("/auth/verify");
+      if (isAuthCheckRoute) {
+        // Clear all auth tokens & cached user data
+        localStorage.removeItem("token");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("user");
+        
+        // Dispatch logout event so AuthContext resets state instantly
+        window.dispatchEvent(new Event("auth_logout"));
 
-      // Redirect to login smoothly if not already on login page
-      if (window.location.pathname !== "/login" && !window._isRedirectingToLogin) {
-        window._isRedirectingToLogin = true;
-        window.location.href = "/login";
+        // Redirect to login smoothly if not already on login page
+        if (window.location.pathname !== "/login" && !window._isRedirectingToLogin) {
+          window._isRedirectingToLogin = true;
+          window.location.href = "/login";
+        }
       }
     } else if (error.response?.status === 403) {
       // Forbidden - no permission (log to console instead of popping up intrusive alerts)

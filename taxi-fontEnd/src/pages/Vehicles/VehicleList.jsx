@@ -86,6 +86,7 @@ const VehicleFormModal = ({ isOpen, onClose, vehicle, onSave, depots = [] }) => 
 
       if (res.data?.data) {
         onSave(res.data.data);
+        alert(vehicle ? "✏️ Cập nhật thông tin xe thành công!" : "🚛 Thêm xe tải mới thành công!");
       } else {
         const fallbackVehicle = {
           _id: vehicle?._id || ("v-" + Date.now()),
@@ -97,13 +98,18 @@ const VehicleFormModal = ({ isOpen, onClose, vehicle, onSave, depots = [] }) => 
 
       onClose();
     } catch (err) {
-      const fallbackVehicle = {
-        _id: vehicle?._id || ("v-" + Date.now()),
-        ...form,
-        depot: depots.find(d => d._id === form.depotId) || { name: "Bãi xe Futa Express" }
-      };
-      onSave(fallbackVehicle);
-      onClose();
+      const errMsg = err.response?.data?.message || err.message;
+      if (errMsg && !errMsg.includes("Network Error")) {
+        alert("Lỗi: " + errMsg);
+      } else {
+        const fallbackVehicle = {
+          _id: vehicle?._id || ("v-" + Date.now()),
+          ...form,
+          depot: depots.find(d => d._id === form.depotId) || { name: "Bãi xe Futa Express" }
+        };
+        onSave(fallbackVehicle);
+        onClose();
+      }
     } finally {
       setLoading(false);
     }
@@ -247,8 +253,7 @@ const VehicleFormModal = ({ isOpen, onClose, vehicle, onSave, depots = [] }) => 
                 >
                   <option value="Sẵn sàng">🟢 Sẵn sàng</option>
                   <option value="Đang vận hành">🔵 Đang vận hành</option>
-                  <option value="Bảo trì">🟠 Bảo trì</option>
-                  <option value="Ngưng hoạt động">🔴 Ngưng hoạt động</option>
+                  <option value="Đang bảo trì">🟠 Đang bảo trì</option>
                 </select>
               </div>
             </div>
@@ -268,180 +273,9 @@ const VehicleFormModal = ({ isOpen, onClose, vehicle, onSave, depots = [] }) => 
   );
 };
 
-// --- Doanh thu / Cước vận tải ---
-const VehicleStatsModal = ({ isOpen, onClose, vehicle }) => {
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen || !vehicle) return;
-    const fetchReports = async () => {
-      setLoading(true);
-      try {
-        const res = await vehicleApi.getRevenue(vehicle._id);
-        setReports(res.data.trips || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReports();
-  }, [isOpen, vehicle]);
 
-  if (!isOpen || !vehicle) return null;
-  const totalRevenue = reports.reduce((sum, r) => sum + (r.fare || r.finalPrice || 0), 0);
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Doanh thu Vận tải: {vehicle.licensePlate}</h3>
-          <button onClick={onClose}>✕</button>
-        </div>
-        <div className="modal-body" style={{ textAlign: "center", padding: "40px 20px" }}>
-          {loading ? (
-            <LoadingSpinner />
-          ) : (
-            <div>
-              <p style={{ color: "#6b7280", marginBottom: "8px" }}>
-                Tổng cước phí vận chuyển đã ghi nhận
-              </p>
-              <h2 style={{ fontSize: "32px", color: "#ea580c", margin: 0, fontWeight: 800 }}>
-                {(totalRevenue || 12500000).toLocaleString("vi-VN")} VNĐ
-              </h2>
-              <p style={{ marginTop: "16px", fontSize: "13px", color: "#9ca3af" }}>
-                Dựa trên các chuyến đi Futa Express đã hoàn thành
-              </p>
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button onClick={onClose} className="btn-secondary">
-            Đóng
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Phiếu Bảo dưỡng ---
-const MaintenanceModal = ({ isOpen, onClose, vehicleId, onSave }) => {
-  const [record, setRecord] = useState({
-    date: new Date().toISOString().slice(0, 10),
-    type: "periodic",
-    description: "",
-    cost: 0,
-    provider: "",
-    odometer: 0,
-  });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await vehicleApi.addMaintenance(vehicleId, record);
-      onSave(res.data);
-      onClose();
-    } catch (err) {
-      alert("Đã lưu phiếu bảo dưỡng");
-      onClose();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>🔧 Tạo Phiếu Bảo Dưỡng Xe Tải</h3>
-          <button onClick={onClose}>✕</button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Ngày thực hiện</label>
-                <input
-                  className="form-input"
-                  type="date"
-                  value={record.date}
-                  onChange={(e) => setRecord({ ...record, date: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Loại bảo dưỡng</label>
-                <select
-                  className="form-select"
-                  value={record.type}
-                  onChange={(e) => setRecord({ ...record, type: e.target.value })}
-                >
-                  <option value="periodic">Bảo dưỡng định kỳ</option>
-                  <option value="repair">Sửa chữa động cơ</option>
-                  <option value="inspection">Đăng kiểm định kỳ</option>
-                  <option value="tire">Thay lốp / Phanh</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Mô tả chi tiết hạng mục bảo dưỡng</label>
-              <textarea
-                className="form-textarea"
-                placeholder="Thay dầu nhớt, lọc gió, kiểm tra hệ thống phanh khí nén..."
-                value={record.description}
-                onChange={(e) => setRecord({ ...record, description: e.target.value })}
-              />
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Chi phí (VNĐ)</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  value={record.cost}
-                  onChange={(e) => setRecord({ ...record, cost: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Số ODO (km)</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  value={record.odometer}
-                  onChange={(e) => setRecord({ ...record, odometer: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Đơn vị / Gara thực hiện</label>
-              <input
-                className="form-input"
-                placeholder="Trung tâm Bảo dưỡng Futa / Gara..."
-                value={record.provider}
-                onChange={(e) => setRecord({ ...record, provider: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn-secondary">
-              Hủy
-            </button>
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? "Đang lưu..." : "Lưu Phiếu Bảo Dưỡng"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
 
 // --- Xóa xe ---
 const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, vehicle, loading }) => {
@@ -489,10 +323,9 @@ const Vehicle = ({ onViewOnMap }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
 
-  const [isStatsOpen, setIsStatsOpen] = useState(false);
-  const [statsVehicle, setStatsVehicle] = useState(null);
 
-  const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
+
+
   const [selectedVehicle, setSelectedVehicle] = useState(null);
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -579,29 +412,9 @@ const Vehicle = ({ onViewOnMap }) => {
         }}
       />
 
-      <VehicleStatsModal
-        isOpen={isStatsOpen}
-        onClose={() => setIsStatsOpen(false)}
-        vehicle={statsVehicle}
-      />
 
-      <MaintenanceModal
-        isOpen={isMaintenanceOpen}
-        onClose={() => setIsMaintenanceOpen(false)}
-        vehicleId={selectedVehicle?._id}
-        onSave={(record) => {
-          setVehicles((prev) =>
-            prev.map((v) =>
-              v._id === selectedVehicle._id
-                ? {
-                    ...v,
-                    maintenanceHistory: [record, ...(v.maintenanceHistory || [])],
-                  }
-                : v
-            )
-          );
-        }}
-      />
+
+
 
       <DeleteConfirmModal
         isOpen={isDeleteOpen}
@@ -679,7 +492,7 @@ const Vehicle = ({ onViewOnMap }) => {
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <StatusIcon status={vehicle.status || "active"} />
                       <span style={{ fontWeight: 600, fontSize: 12 }}>
-                        {vehicle.status === "Sẵn sàng" || vehicle.status === "active" ? "🟢 Sẵn sàng" : vehicle.status === "Đang vận hành" ? "🔵 Đang vận hành" : "🟠 Bảo trì"}
+                        {vehicle.status === "Sẵn sàng" || vehicle.status === "active" ? "🟢 Sẵn sàng" : vehicle.status === "Đang vận hành" ? "🔵 Đang vận hành" : "🟠 Đang bảo trì"}
                       </span>
                     </div>
                     <span style={{ fontSize: 12, color: "#ea580c", fontWeight: 700 }}>
@@ -689,35 +502,7 @@ const Vehicle = ({ onViewOnMap }) => {
                 </div>
 
                 <div className="vehicle-actions" style={{ display: "flex", gap: 6, marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
-                  <button
-                    className="icon-btn"
-                    title="Cước Doanh thu"
-                    onClick={() => {
-                      setStatsVehicle(vehicle);
-                      setIsStatsOpen(true);
-                    }}
-                  >
-                    💵
-                  </button>
-                  <button
-                    className="icon-btn"
-                    title="Bảo dưỡng"
-                    onClick={() => {
-                      setSelectedVehicle(vehicle);
-                      setIsMaintenanceOpen(true);
-                    }}
-                  >
-                    🔧
-                  </button>
-                  {onViewOnMap && (
-                    <button
-                      className="icon-btn"
-                      title="Vị trí"
-                      onClick={() => onViewOnMap(vehicle._id)}
-                    >
-                      📍
-                    </button>
-                  )}
+
                   <button
                     className="icon-btn"
                     title="Sửa"

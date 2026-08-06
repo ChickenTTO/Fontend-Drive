@@ -244,7 +244,7 @@ const OperationMap = ({
                 <FaMapMarkerAlt className="header-icon text-primary" />
                 <div>
                   <h3>Bản Đồ Vận Tải Trực Quan 5 Bãi Xe FUTA</h3>
-                  <span className="card-subtitle">Theo dõi vị trí xe tải & lưu lượng tại các đầu mối vận tải</span>
+                  <span className="card-subtitle">Theo dõi lưu lượng tại các đầu mối vận tải</span>
                 </div>
               </div>
               <div className="map-legend">

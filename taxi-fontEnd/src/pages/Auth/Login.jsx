@@ -74,7 +74,7 @@ const Login = () => {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h1 className="login-title">Chào mừng đến với Smart Fleet AI</h1>
+        <h1 className="login-title">Chào mừng đến với Futa Express</h1>
         <p className="login-subtitle">Hệ thống điều xe thông minh.</p>
 
         <form className="login-form" onSubmit={handleSubmit}>

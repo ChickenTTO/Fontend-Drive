@@ -25,7 +25,8 @@ import StaffList from "../pages/Staff/StaffList";
 import MaintenanceLog from "../pages/Vehicles/MaintenanceLog";
 import DriverPortal from "../pages/Drivers/DriverPortal";
 import DepotList from "../pages/Vehicles/DepotList";
-import FreightDispatch from "../pages/Dispatch/FreightDispatch";
+import TripManagement from "../pages/Dispatch/TripManagement";
+import VehicleDispatch from "../pages/Dispatch/VehicleDispatch";
 import BarcodeHandover from "../pages/Drivers/BarcodeHandover";
 import ExpenseApproval from "../pages/Accounting/ExpenseApproval";
 import FutaDashboard from "../pages/Reports/FutaDashboard";
@@ -34,8 +35,7 @@ import FutaDashboard from "../pages/Reports/FutaDashboard";
 const ADMIN_ONLY = [ROLES.ADMIN];
 const ADMIN_DISPATCHER = [ROLES.ADMIN, ROLES.DISPATCHER];
 const ADMIN_ACCOUNTANT = [ROLES.ADMIN, ROLES.ACCOUNTANT];
-const DRIVER_ROLES = [ROLES.ADMIN, ROLES.DRIVER];
-const USER_ONLY = [ROLES.USER, ROLES.CUSTOMER];
+const DRIVER_ROLES = [ROLES.DRIVER];
 
 const ALL_ROLES = [ROLES.ADMIN, ROLES.DISPATCHER, ROLES.DRIVER, ROLES.ACCOUNTANT];
 const HANDOVER_ROLES = [ROLES.ADMIN, ROLES.DISPATCHER, ROLES.DRIVER];
@@ -180,20 +180,6 @@ const AppRouter = ({
         }
       />
 
-      {/* Khách hàng */}
-      <Route
-        path="/customers"
-        element={
-          <PrivateRoute roles={ADMIN_DISPATCHER}>
-            <CustomerList
-              customers={customers}
-              setCustomers={setCustomers}
-              vehicles={vehicles}
-            />
-          </PrivateRoute>
-        }
-      />
-
       {/* Quản lý Bãi xe */}
       <Route
         path="/depots"
@@ -204,12 +190,30 @@ const AppRouter = ({
         }
       />
 
-      {/* Quản lý Chuyến đi & Điều phối */}
+      {/* Quản lý Chuyến đi */}
+      <Route
+        path="/trips"
+        element={
+          <PrivateRoute roles={ADMIN_DISPATCHER}>
+            <TripManagement />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Điều phối Phương tiện & Tài xế */}
+      <Route
+        path="/dispatch"
+        element={
+          <PrivateRoute roles={ADMIN_DISPATCHER}>
+            <VehicleDispatch />
+          </PrivateRoute>
+        }
+      />
       <Route
         path="/dispatch-futa"
         element={
           <PrivateRoute roles={ADMIN_DISPATCHER}>
-            <FreightDispatch />
+            <VehicleDispatch />
           </PrivateRoute>
         }
       />
@@ -254,19 +258,6 @@ const AppRouter = ({
         element={
           <PrivateRoute roles={ADMIN_ACCOUNTANT}>
             <FutaDashboard />
-          </PrivateRoute>
-        }
-      />
-
-      {/* User / Khách hàng */}
-      <Route
-        path="/user-dashboard"
-        element={
-          <PrivateRoute roles={USER_ONLY}>
-            <div style={{ padding: "50px", textAlign: "center" }}>
-              <h2 style={{ color: "#2563eb" }}>Xin chào Khách hàng!</h2>
-              <p>Khu vực lịch sử chuyến đi của riêng bạn.</p>
-            </div>
           </PrivateRoute>
         }
       />

@@ -3,6 +3,4 @@ export const ROLES = {
   DISPATCHER: 'dispatcher',   // Điều phối
   DRIVER: 'driver',
   ACCOUNTANT: 'accountant',
-  USER: 'user',
-  CUSTOMER: 'customer',
 };

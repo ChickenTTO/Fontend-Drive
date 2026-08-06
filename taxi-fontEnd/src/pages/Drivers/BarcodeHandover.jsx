@@ -12,7 +12,7 @@ export const BarcodeHandover = () => {
   // Form states
   const [handoverType, setHandoverType] = useState("CHECK_OUT");
   const [odometerReading, setOdometerReading] = useState(15000);
-  const [fuelLevelPercent, setFuelLevelPercent] = useState(95);
+  const [fuelLiters, setFuelLiters] = useState(70);
   const [generalNotes, setGeneralNotes] = useState("");
 
   // Photo URLs (Mock/Cloudinary links)
@@ -39,7 +39,7 @@ export const BarcodeHandover = () => {
         setVehicleData(v);
         setActiveTrip(t);
         setOdometerReading(v.odometer || 15000);
-        setFuelLevelPercent(v.fuelLevel || 90);
+        setFuelLiters(v.fuelLiters || v.fuelLevel || 70);
 
         if (v.status === "Sẵn sàng") {
           setHandoverType("CHECK_OUT");
@@ -72,7 +72,8 @@ export const BarcodeHandover = () => {
         tripId: activeTrip._id,
         barcode: vehicleData.barcode,
         odometerReading,
-        fuelLevelPercent,
+        fuelLiters,
+        fuelLevelPercent: fuelLiters,
         photos,
         generalNotes
       });
@@ -193,15 +194,44 @@ export const BarcodeHandover = () => {
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 13, color: "#475569", fontWeight: 600, display: "block", marginBottom: 4 }}>Mức nhiên liệu thực tế ({fuelLevelPercent}%)</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={fuelLevelPercent}
-                onChange={(e) => setFuelLevelPercent(Number(e.target.value))}
-                style={{ width: "100%", accentColor: "#f97316" }}
-              />
+              <label style={{ fontSize: 13, color: "#475569", fontWeight: 600, display: "block", marginBottom: 4 }}>
+                Số lít nhiên liệu thực tế (Lít)
+              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <input
+                  type="range"
+                  min="0"
+                  max="300"
+                  step="1"
+                  value={fuelLiters}
+                  onChange={(e) => setFuelLiters(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: "#f97316", cursor: "pointer" }}
+                />
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="number"
+                    min="0"
+                    max="500"
+                    value={fuelLiters}
+                    onChange={(e) => {
+                      const val = Math.max(0, Number(e.target.value) || 0);
+                      setFuelLiters(val);
+                    }}
+                    style={{
+                      width: 80,
+                      padding: "6px 10px",
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 6,
+                      color: "#0f172a",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      textAlign: "center"
+                    }}
+                  />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "#475569" }}>Lít</span>
+                </div>
+              </div>
             </div>
 
             <div style={{ marginBottom: 14 }}>

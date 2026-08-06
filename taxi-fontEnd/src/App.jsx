@@ -44,9 +44,15 @@ const NAV_ITEMS = [
     roles: [ROLES.ADMIN],
   },
   {
-    to: "/dispatch-futa",
+    to: "/trips",
     tab: "active-vehicles",
-    label: "Chuyến đi & Điều phối",
+    label: "Quản lý Chuyến đi",
+    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
+  },
+  {
+    to: "/dispatch",
+    tab: "map",
+    label: "Điều phối Phương tiện & Tài xế",
     roles: [ROLES.ADMIN, ROLES.DISPATCHER],
   },
   {
@@ -74,16 +80,10 @@ const NAV_ITEMS = [
     roles: [ROLES.ADMIN, ROLES.DISPATCHER],
   },
   {
-    to: "/customers",
-    tab: "customers",
-    label: "Khách hàng",
-    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
-  },
-  {
     to: "/driver-portal",
     tab: "active-vehicles",
     label: "Cổng Tài xế (Nhận/Giao xe)",
-    roles: [ROLES.ADMIN, ROLES.DRIVER],
+    roles: [ROLES.DRIVER],
   },
   {
     to: "/expense-approval",
@@ -202,7 +202,7 @@ const App = () => {
   const sidebarContent = (
     <div className="sidebar-content">
       <div className="sidebar-header">
-        <h1 className="app-title">Smart Fleet AI</h1>
+        <h1 className="app-title">Futa Express</h1>
         <button
           onClick={() => setIsSidebarOpen(false)}
           className="btn-close-sidebar"
@@ -269,7 +269,7 @@ const App = () => {
             {isAuthenticated && (
               <header className="mobile-header">
                 <h1 className="app-title" style={{ fontSize: "20px" }}>
-                  Smart Fleet AI
+                  Futa Express
                 </h1>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <button

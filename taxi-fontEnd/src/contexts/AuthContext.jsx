@@ -113,9 +113,6 @@ export function AuthProvider({ children }) {
         return '/dispatch-futa';
       case ROLES.ADMIN:
         return '/map';
-      case ROLES.USER:
-      case ROLES.CUSTOMER:
-        return '/user-dashboard';
       default:
         return '/map';
     }

@@ -30,7 +30,7 @@ const SUGGESTIONS = {
     "Doanh số điều hành hôm nay"
   ],
   default: [
-    "Hệ thống Smart Fleet AI hoạt động ra sao?",
+    "Hệ thống Futa Express hoạt động ra sao?",
     "Làm cách nào để đổi mật khẩu?",
     "Quyền hạn của tôi là gì?"
   ]
@@ -59,7 +59,7 @@ export const ChatbotWidget = () => {
   // Khởi tạo tin nhắn chào mừng dựa theo tên và vai trò người dùng
   useEffect(() => {
     if (isAuthenticated && user && messages.length === 0) {
-      let welcomeMsg = `Xin chào **${user.fullName || user.username}**! Tôi là trợ lý ảo **Smart Fleet AI**.\n\nHôm nay tôi có thể giúp gì cho bạn trong công việc điều phối và quản lý vận tải?`;
+      let welcomeMsg = `Xin chào **${user.fullName || user.username}**! Tôi là trợ lý ảo **Futa Express**.\n\nHôm nay tôi có thể giúp gì cho bạn trong công việc điều phối và quản lý vận tải?`;
       
       if (user.role === "driver") {
         welcomeMsg = `Xin chào tài xế **${user.fullName}**! Chúc bạn có những lộ trình an toàn.\n\nBạn có thể hỏi tôi về lịch chuyến xe chạy hôm nay, thông tin xe được bàn giao hoặc quy trình nộp tiền mặt.`;
@@ -273,7 +273,7 @@ export const ChatbotWidget = () => {
         {
           id: "welcome",
           sender: "bot",
-          text: `Đã làm mới hội thoại. Tôi là trợ lý ảo **Smart Fleet AI**, tôi có thể giúp gì thêm cho bạn?`,
+          text: `Đã làm mới hội thoại. Tôi là trợ lý ảo **Futa Express**, tôi có thể giúp gì thêm cho bạn?`,
           time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         }
       ]);
@@ -301,7 +301,7 @@ export const ChatbotWidget = () => {
                 <BotIcon />
               </div>
               <div className="chatbot-title">
-                <h3>Smart Fleet AI</h3>
+                <h3>Futa Express</h3>
                 <span>Trực tuyến</span>
               </div>
             </div>

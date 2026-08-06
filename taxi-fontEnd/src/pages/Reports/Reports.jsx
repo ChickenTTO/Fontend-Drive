@@ -9,7 +9,6 @@ import './Reports.css';
 
 import { XIcon, CarIcon, UserCircleIcon, CalendarIcon, PencilIcon } from '../../components/icons';
 import FutaDashboard from './FutaDashboard';
-import ExpenseApproval from '../Accounting/ExpenseApproval';
 
 // --- Custom Recharts Glassmorphism Tooltip ---
 const CustomGlassTooltip = ({ active, payload, label, formatter }) => {
@@ -643,12 +642,6 @@ const Reports = ({ reports = [], setReports, drivers = [], vehicles = [] }) => {
           >
             🚚 Đội Xe Futa Express
           </button>
-          <button
-            onClick={() => setActiveTab('expenses')}
-            className={`reports-tab-btn ${activeTab === 'expenses' ? 'active-expenses' : ''}`}
-          >
-            🧾 Đối Soát Chi Phí
-          </button>
         </div>
       </div>
 
@@ -666,7 +659,6 @@ const Reports = ({ reports = [], setReports, drivers = [], vehicles = [] }) => {
 
       {/* Sub-tab Views */}
       {activeTab === 'futa' && <FutaDashboard />}
-      {activeTab === 'expenses' && <ExpenseApproval />}
 
       {activeTab === 'daily' && (
         <>

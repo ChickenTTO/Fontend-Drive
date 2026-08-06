@@ -66,9 +66,8 @@ axiosClient.interceptors.response.use(
         window.location.href = "/login";
       }
     } else if (error.response?.status === 403) {
-      // Forbidden - no permission
-      console.warn("🚫 Forbidden - No permission");
-      alert("Bạn không có quyền thực hiện thao tác này.");
+      // Forbidden - no permission (log to console instead of popping up intrusive alerts)
+      console.warn("🚫 Forbidden:", error.response?.data?.message || "Bạn không có quyền thực hiện thao tác này.");
     } else if (error.response?.status === 404) {
       // Not found
       console.warn("🔍 Not Found");

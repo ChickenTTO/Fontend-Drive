@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
  *   <PrivateRoute roles={[ROLES.ADMIN]}>    → cần đúng role
  */
 const PrivateRoute = ({ children, roles }) => {
-    const { isAuthenticated, loading, hasRole } = useAuth();
+    const { isAuthenticated, loading, hasRole, getDefaultRoute } = useAuth();
     const location = useLocation();
 
     // Đang kiểm tra auth → hiển thị loading
@@ -50,9 +50,9 @@ const PrivateRoute = ({ children, roles }) => {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // Có yêu cầu role cụ thể nhưng không đủ quyền
+    // Có yêu cầu role cụ thể nhưng không đủ quyền → Tự động chuyển hướng về trang mặc định phù hợp cho Vai Trò sử dụng ngay
     if (roles && roles.length > 0 && !hasRole(roles)) {
-        return <Navigate to="/unauthorized" replace />;
+        return <Navigate to={getDefaultRoute()} replace />;
     }
 
     return children;

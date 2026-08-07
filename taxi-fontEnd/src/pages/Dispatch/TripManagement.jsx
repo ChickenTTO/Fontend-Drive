@@ -16,6 +16,7 @@ export const TripManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
 
   // Form State for Create/Edit
@@ -31,9 +32,11 @@ export const TripManagement = () => {
     endDepotId: "",
     endLocation: "Kho bãi trung chuyển",
     distance: 120,
+    status: "Đang chờ",
     startTime: new Date().toISOString().substring(0, 16),
     estimatedEndTime: new Date(Date.now() + 6 * 3600 * 1000).toISOString().substring(0, 16),
-    notes: ""
+    notes: "",
+    cancelReason: ""
   });
 
   const mockDepots = [
@@ -128,6 +131,7 @@ export const TripManagement = () => {
       startTime: "2026-08-03 06:00",
       estimatedEndTime: "2026-08-03 11:00",
       createdAt: "2026-08-02 18:00",
+      cancelReason: "Khách hàng hủy đơn / thay đổi kế hoạch thu hoạch",
       notes: "Hủy do đối tác thay đổi kế hoạch thu hoạch"
     }
   ];
@@ -177,9 +181,11 @@ export const TripManagement = () => {
       endDepotId: depots[1]?._id || depots[0]?._id || "",
       endLocation: "Kho bãi trung chuyển",
       distance: 150,
+      status: "Đang chờ",
       startTime: new Date().toISOString().substring(0, 16),
       estimatedEndTime: new Date(Date.now() + 6 * 3600 * 1000).toISOString().substring(0, 16),
-      notes: ""
+      notes: "",
+      cancelReason: ""
     });
     setShowCreateModal(true);
   };
@@ -194,14 +200,16 @@ export const TripManagement = () => {
       cargoType: trip.cargoType || "",
       cargoWeightTon: trip.cargoWeightTon || 1.0,
       fare: trip.fare || 0,
-      startDepotId: trip.startDepot?._id || trip.startDepot || "",
+      startDepotId: trip.startDepot?._id || trip.startDepot || (depots[0]?._id || ""),
       startLocation: trip.startLocation || "",
-      endDepotId: trip.endDepot?._id || trip.endDepot || "",
+      endDepotId: trip.endDepot?._id || trip.endDepot || (depots[1]?._id || depots[0]?._id || ""),
       endLocation: trip.endLocation || "",
       distance: trip.distance || 0,
-      startTime: trip.startTime ? new Date(trip.startTime).toISOString().substring(0, 16) : new Date().toISOString().substring(0, 16),
-      estimatedEndTime: trip.estimatedEndTime ? new Date(trip.estimatedEndTime).toISOString().substring(0, 16) : "",
-      notes: trip.notes || ""
+      status: trip.status || "Đang chờ",
+      startTime: trip.startTime ? String(trip.startTime).replace(" ", "T").substring(0, 16) : new Date().toISOString().substring(0, 16),
+      estimatedEndTime: trip.estimatedEndTime ? String(trip.estimatedEndTime).replace(" ", "T").substring(0, 16) : "",
+      notes: trip.notes || "",
+      cancelReason: trip.cancelReason || ""
     });
     setShowEditModal(true);
   };
@@ -210,6 +218,12 @@ export const TripManagement = () => {
     e?.stopPropagation();
     setSelectedTrip(trip);
     setShowDetailModal(true);
+  };
+
+  const handleOpenCancelModal = (trip, e) => {
+    e?.stopPropagation();
+    setSelectedTrip(trip);
+    setShowCancelModal(true);
   };
 
   const handleSaveCreateTrip = async (e) => {
@@ -227,7 +241,7 @@ export const TripManagement = () => {
       setLoading(true);
       const res = await freightTripApi.createTrip(formData);
       if (res.data?.success) {
-        setMessage({ type: "success", text: `Đã lưu Chuyến đi [${res.data.data.tripCode}] thành công! Chuyến đang ở trạng thái Đang chờ.` });
+        setMessage({ type: "success", text: `Đã lưu Chuyến đi [${res.data.data.tripCode}] thành công!` });
         setShowCreateModal(false);
         fetchInitialData();
       } else {
@@ -265,7 +279,7 @@ export const TripManagement = () => {
     };
 
     setTrips([newTrip, ...trips]);
-    setMessage({ type: "success", text: `Đã lưu Chuyến đi [${newTrip.tripCode}] thành công! Chuyến đang ở trạng thái "Đang chờ" (sẵn sàng điều phối).` });
+    setMessage({ type: "success", text: `✅ Đã lưu Chuyến đi [${newTrip.tripCode}] thành công! Chuyến đang ở trạng thái "Đang chờ".` });
     setShowCreateModal(false);
   };
 
@@ -277,7 +291,7 @@ export const TripManagement = () => {
       setLoading(true);
       const res = await freightTripApi.updateTrip(selectedTrip._id, formData);
       if (res.data?.success) {
-        setMessage({ type: "success", text: `Đã cập nhật chuyến đi [${selectedTrip.tripCode}] thành công!` });
+        setMessage({ type: "success", text: `✏️ Đã cập nhật thành công thông tin chuyến đi [${selectedTrip.tripCode}]!` });
         setShowEditModal(false);
         fetchInitialData();
       } else {
@@ -306,41 +320,49 @@ export const TripManagement = () => {
           distance: formData.distance,
           startLocation: formData.startLocation,
           endLocation: formData.endLocation,
-          startDepot: startObj ? { name: startObj.name, code: startObj.code } : t.startDepot,
-          endDepot: endObj ? { name: endObj.name, code: endObj.code } : t.endDepot,
+          startDepot: startObj ? { _id: startObj._id, name: startObj.name, code: startObj.code, city: startObj.city } : t.startDepot,
+          endDepot: endObj ? { _id: endObj._id, name: endObj.name, code: endObj.code, city: endObj.city } : t.endDepot,
+          status: formData.status,
           startTime: formData.startTime.replace("T", " "),
           estimatedEndTime: formData.estimatedEndTime.replace("T", " "),
-          notes: formData.notes
+          notes: formData.notes,
+          cancelReason: formData.status === "Đã hủy" ? (formData.cancelReason || "Đã hủy bởi điều hành viên") : t.cancelReason
         };
       }
       return t;
     }));
 
-    setMessage({ type: "success", text: `Đã cập nhật Chuyến đi [${selectedTrip.tripCode}]!` });
+    setMessage({ type: "success", text: `✏️ Đã cập nhật thành công thông tin chuyến đi [${selectedTrip.tripCode}]!` });
     setShowEditModal(false);
   };
 
-  const handleCancelTrip = async (trip, e) => {
-    e?.stopPropagation();
-    if (trip.status !== "Đang chờ") {
-      setMessage({ type: "error", text: "Quy tắc nghiệp vụ: Chỉ cho phép HỦY chuyến đi khi đang ở trạng thái 'Đang chờ'!" });
-      return;
-    }
-
-    if (!window.confirm(`Xác nhận HỦY chuyến đi [${trip.tripCode}]?`)) return;
-
+  const handleConfirmCancel = async (reason) => {
+    if (!selectedTrip) return;
     try {
-      const res = await freightTripApi.cancelTrip(trip._id);
-      if (res.data?.success) {
-        setMessage({ type: "success", text: res.data.message });
-      } else {
-        setTrips(trips.map(t => t._id === trip._id ? { ...t, status: "Đã hủy" } : t));
-        setMessage({ type: "success", text: `Đã HỦY chuyến đi [${trip.tripCode}] thành công!` });
-      }
-      fetchInitialData();
+      setLoading(true);
+      await freightTripApi.cancelTrip(selectedTrip._id).catch(() => null);
+
+      setTrips(prev => prev.map(t => t._id === selectedTrip._id ? {
+        ...t,
+        status: "Đã hủy",
+        cancelReason: reason
+      } : t));
+
+      setMessage({ type: "success", text: `🚫 Đã HỦY chuyến đi [${selectedTrip.tripCode}] thành công! Lý do: ${reason}` });
+      setShowCancelModal(false);
+      setShowDetailModal(false);
     } catch (err) {
-      setTrips(trips.map(t => t._id === trip._id ? { ...t, status: "Đã hủy" } : t));
-      setMessage({ type: "success", text: `Đã HỦY chuyến đi [${trip.tripCode}] thành công!` });
+      setTrips(prev => prev.map(t => t._id === selectedTrip._id ? {
+        ...t,
+        status: "Đã hủy",
+        cancelReason: reason
+      } : t));
+
+      setMessage({ type: "success", text: `🚫 Đã HỦY chuyến đi [${selectedTrip.tripCode}] thành công! Lý do: ${reason}` });
+      setShowCancelModal(false);
+      setShowDetailModal(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -391,7 +413,7 @@ export const TripManagement = () => {
             📦 Quản Lý Chuyến Đi Vận Tải Futa Express
           </h1>
           <p style={{ color: "#64748b", fontSize: 13, marginTop: 4, margin: 0 }}>
-            Tạo chuyến đi mới (hàng hóa, lộ trình, lịch trình), xem danh sách, tìm kiếm, xem chi tiết, cập nhật, theo dõi trạng thái, hủy chuyến và lịch sử chuyến đi.
+            Hệ thống quản lý cốt lõi: Tạo lệnh vận chuyển mới (Hàng hóa, Lộ trình, Lịch trình), Xem danh sách, Tìm kiếm, Cập nhật sửa đổi & Hủy chuyến đi.
           </p>
         </div>
         <button
@@ -512,6 +534,12 @@ export const TripManagement = () => {
               <span>🏁 Dự kiến: <strong>{t.estimatedEndTime ? String(t.estimatedEndTime).substring(0, 16) : "N/A"}</strong></span>
             </div>
 
+            {t.cancelReason && t.status === "Đã hủy" && (
+              <div style={{ fontSize: 12, color: "#dc2626", background: "#fef2f2", padding: "6px 10px", borderRadius: 6, marginBottom: 10, border: "1px solid #fecaca" }}>
+                🚫 <strong>Lý do hủy:</strong> {t.cancelReason}
+              </div>
+            )}
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 4 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#16a34a" }}>
                 💰 Cước: {(t.fare || 0).toLocaleString()} VNĐ
@@ -523,21 +551,21 @@ export const TripManagement = () => {
                 >
                   👁️ Chi tiết
                 </button>
-                {t.status === "Đang chờ" && (
-                  <>
-                    <button
-                      onClick={(e) => handleOpenEditModal(t, e)}
-                      style={{ padding: "5px 10px", background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                    >
-                      ✏️ Cập nhật
-                    </button>
-                    <button
-                      onClick={(e) => handleCancelTrip(t, e)}
-                      style={{ padding: "5px 10px", background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                    >
-                      🚫 Hủy
-                    </button>
-                  </>
+                {t.status !== "Đã hủy" && (
+                  <button
+                    onClick={(e) => handleOpenEditModal(t, e)}
+                    style={{ padding: "5px 10px", background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    ✏️ Sửa
+                  </button>
+                )}
+                {(t.status === "Đang chờ" || t.status === "Đang vận hành") && (
+                  <button
+                    onClick={(e) => handleOpenCancelModal(t, e)}
+                    style={{ padding: "5px 10px", background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    🚫 Hủy
+                  </button>
                 )}
               </div>
             </div>
@@ -554,14 +582,14 @@ export const TripManagement = () => {
       {/* CREATE TRIP MODAL */}
       {showCreateModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <form onSubmit={handleSaveCreateTrip} style={{ background: "#ffffff", padding: 24, borderRadius: 12, width: 620, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}>
+          <form onSubmit={handleSaveCreateTrip} style={{ background: "#ffffff", padding: 24, borderRadius: 12, width: 640, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}>
             <h2 style={{ fontSize: 19, fontWeight: 800, margin: 0, marginBottom: 16, color: "#0f172a", borderBottom: "1px solid #f1f5f9", paddingBottom: 10 }}>
-              📝 Nhập Thông Tin & Tạo Chuyến Đi Mới
+              📝 Nhập Thông Tin & Tạo Lệnh Vận Chuyển Mới
             </h2>
 
             {/* Section 1: Trip Info & Customer */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>1. Nhập thông tin Chuyến đi & Khách hàng</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>1. Thông tin Chuyến đi & Khách hàng</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Mã Chuyến *</label>
@@ -580,7 +608,7 @@ export const TripManagement = () => {
 
             {/* Section 2: Cargo & Financials */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>2. Nhập thông tin Hàng hóa & Cước phí</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>2. Thông tin Hàng hóa & Cước phí</div>
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Loại Hàng hóa *</label>
@@ -599,7 +627,7 @@ export const TripManagement = () => {
 
             {/* Section 3: Route */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>3. Nhập Lộ trình Chuyến đi</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>3. Lộ trình Chuyến đi</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Bãi Xe Xuất Phát *</label>
@@ -633,7 +661,7 @@ export const TripManagement = () => {
 
             {/* Section 4: Schedule */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>4. Nhập Lịch trình Chuyến đi</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>4. Lịch trình Chuyến đi</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Giờ Xuất bến dự kiến *</label>
@@ -662,50 +690,173 @@ export const TripManagement = () => {
       {/* EDIT TRIP MODAL */}
       {showEditModal && selectedTrip && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <form onSubmit={handleSaveEditTrip} style={{ background: "#ffffff", padding: 24, borderRadius: 12, width: 560, maxHeight: "90vh", overflowY: "auto" }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, marginBottom: 14, color: "#0f172a" }}>
+          <form onSubmit={handleSaveEditTrip} style={{ background: "#ffffff", padding: 24, borderRadius: 12, width: 640, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}>
+            <h2 style={{ fontSize: 19, fontWeight: 800, margin: 0, marginBottom: 16, color: "#0f172a", borderBottom: "1px solid #f1f5f9", paddingBottom: 10 }}>
               ✏️ Cập Nhật Thông Tin Chuyến Đi [{selectedTrip.tripCode}]
             </h2>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Khách hàng gửi</label>
-                <input type="text" value={formData.customerName} onChange={(e) => setFormData({ ...formData, customerName: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>SĐT Liên hệ</label>
-                <input type="text" value={formData.customerPhone} onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10, marginBottom: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Loại hàng hóa</label>
-                <input type="text" value={formData.cargoType} onChange={(e) => setFormData({ ...formData, cargoType: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Khối lượng (Tấn)</label>
-                <input type="number" step="0.5" value={formData.cargoWeightTon} onChange={(e) => setFormData({ ...formData, cargoWeightTon: Number(e.target.value) })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
-              </div>
-            </div>
-
+            {/* Section 1: Trip Status & Customer */}
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Ghi chú</label>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>1. Trạng thái & Khách hàng</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Trạng Thái Chuyến</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13, fontWeight: 700 }}
+                  >
+                    <option value="Đang chờ">⏳ Đang chờ</option>
+                    <option value="Đang vận hành">🚚 Đang vận hành</option>
+                    <option value="Hoàn thành">✅ Hoàn thành</option>
+                    <option value="Đã hủy">❌ Đã hủy</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Khách hàng gửi *</label>
+                  <input type="text" required value={formData.customerName} onChange={(e) => setFormData({ ...formData, customerName: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>SĐT Liên hệ *</label>
+                  <input type="text" required value={formData.customerPhone} onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Cargo & Financials */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>2. Thông tin Hàng hóa & Cước phí</div>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Loại hàng hóa</label>
+                  <input type="text" value={formData.cargoType} onChange={(e) => setFormData({ ...formData, cargoType: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Khối lượng (Tấn)</label>
+                  <input type="number" step="0.5" value={formData.cargoWeightTon} onChange={(e) => setFormData({ ...formData, cargoWeightTon: Number(e.target.value) })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Cước phí (VNĐ)</label>
+                  <input type="number" step="100000" min="0" value={formData.fare} onChange={(e) => setFormData({ ...formData, fare: Number(e.target.value) })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13, fontWeight: 700, color: "#16a34a" }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Route */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>3. Lộ trình Chuyến đi</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Bãi Xe Xuất Phát</label>
+                  <select value={formData.startDepotId} onChange={(e) => setFormData({ ...formData, startDepotId: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }}>
+                    {depots.map(d => <option key={d._id} value={d._id}>[{d.code}] {d.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Bãi Xe Đích Đến</label>
+                  <select value={formData.endDepotId} onChange={(e) => setFormData({ ...formData, endDepotId: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }}>
+                    {depots.map(d => <option key={d._id} value={d._id}>[{d.code}] {d.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Địa chỉ Điểm đi</label>
+                  <input type="text" value={formData.startLocation} onChange={(e) => setFormData({ ...formData, startLocation: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Địa chỉ Điểm đến</label>
+                  <input type="text" value={formData.endLocation} onChange={(e) => setFormData({ ...formData, endLocation: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Quãng đường (km)</label>
+                  <input type="number" min="0" value={formData.distance} onChange={(e) => setFormData({ ...formData, distance: Number(e.target.value) })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4: Schedule */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginBottom: 8 }}>4. Lịch trình Chuyến đi</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Giờ Xuất bến dự kiến</label>
+                  <input type="datetime-local" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Giờ Đến dự kiến</label>
+                  <input type="datetime-local" value={formData.estimatedEndTime} onChange={(e) => setFormData({ ...formData, estimatedEndTime: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Ghi chú dặn dò</label>
               <textarea rows="2" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} style={{ width: "100%", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }} />
             </div>
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button type="button" onClick={() => setShowEditModal(false)} style={{ padding: "8px 16px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, cursor: "pointer" }}>Hủy</button>
-              <button type="submit" style={{ padding: "8px 16px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}>Lưu Cập Nhật</button>
+              <button type="button" onClick={() => setShowEditModal(false)} style={{ padding: "9px 18px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, cursor: "pointer" }}>Hủy bỏ</button>
+              <button type="submit" style={{ padding: "9px 20px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}>💾 Lưu Cập Nhật</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* CANCEL TRIP CONFIRMATION MODAL */}
+      {showCancelModal && selectedTrip && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ background: "#ffffff", padding: 24, borderRadius: 12, width: 480, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}>
+            <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, marginBottom: 10, color: "#dc2626" }}>
+              🚫 Xác Nhận Hủy Chuyến Đi [{selectedTrip.tripCode}]
+            </h3>
+            <p style={{ fontSize: 13.5, color: "#475569", marginBottom: 14 }}>
+              Bạn có chắc chắn muốn HỦY chuyến vận chuyển <strong>{selectedTrip.tripCode}</strong> ({selectedTrip.customerName || "Khách hàng"})?
+            </p>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12.5, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>
+                Vui lòng chọn lý do hủy chuyến <span style={{ color: "red" }}>*</span>
+              </label>
+              <select
+                id="cancel-reason-select"
+                style={{ width: "100%", padding: "9px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13 }}
+              >
+                <option value="Khách hàng hủy đơn / thay đổi kế hoạch">Khách hàng hủy đơn / thay đổi kế hoạch</option>
+                <option value="Không có xe / tài xế phù hợp">Không có xe / tài xế phù hợp</option>
+                <option value="Sự cố phương tiện hỏng hóc">Sự cố phương tiện hỏng hóc</option>
+                <option value="Thời tiết / Lộ trình không đảm bảo">Thời tiết / Lộ trình không đảm bảo</option>
+                <option value="Lý do vận hành khác">Lý do vận hành khác</option>
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowCancelModal(false)}
+                style={{ padding: "8px 16px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, cursor: "pointer" }}
+              >
+                Quay lại
+              </button>
+              <button
+                onClick={() => {
+                  const selectEl = document.getElementById("cancel-reason-select");
+                  const reasonVal = selectEl?.value || "Đã hủy bởi điều hành viên";
+                  handleConfirmCancel(reasonVal);
+                }}
+                style={{ padding: "8px 18px", background: "#dc2626", color: "#ffffff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+              >
+                🚫 Xác Nhận Hủy Chuyến
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* DETAIL TRIP MODAL */}
       {showDetailModal && selectedTrip && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#ffffff", padding: 24, borderRadius: 12, width: 540, maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "#ffffff", padding: 24, borderRadius: 12, width: 560, maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, borderBottom: "1px solid #f1f5f9", paddingBottom: 10 }}>
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#ea580c" }}>📋 Chi Tiết Chuyến Đi {selectedTrip.tripCode}</h2>
@@ -734,6 +885,12 @@ export const TripManagement = () => {
               <div><strong>⏰ Xuất bến dự kiến:</strong> {selectedTrip.startTime ? String(selectedTrip.startTime).substring(0, 16) : "N/A"}</div>
               <div><strong>🏁 Đến dự kiến:</strong> {selectedTrip.estimatedEndTime ? String(selectedTrip.estimatedEndTime).substring(0, 16) : "N/A"}</div>
 
+              {selectedTrip.cancelReason && (
+                <div style={{ background: "#fef2f2", padding: 10, borderRadius: 6, border: "1px solid #fecaca", color: "#991b1b" }}>
+                  🚫 <strong>Lý do hủy chuyến:</strong> {selectedTrip.cancelReason}
+                </div>
+              )}
+
               {selectedTrip.notes && (
                 <div style={{ background: "#fff7ed", padding: 10, borderRadius: 6, border: "1px solid #ffedd5", color: "#c2410c" }}>
                   📝 <strong>Ghi chú:</strong> {selectedTrip.notes}
@@ -741,8 +898,32 @@ export const TripManagement = () => {
               )}
             </div>
 
-            <div style={{ marginTop: 20, textAlign: "right" }}>
-              <button onClick={() => setShowDetailModal(false)} style={{ padding: "8px 18px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}>Đóng</button>
+            <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {selectedTrip.status !== "Đã hủy" && (
+                  <button
+                    onClick={(e) => {
+                      setShowDetailModal(false);
+                      handleOpenEditModal(selectedTrip, e);
+                    }}
+                    style={{ padding: "8px 14px", background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    ✏️ Sửa Chuyến
+                  </button>
+                )}
+                {(selectedTrip.status === "Đang chờ" || selectedTrip.status === "Đang vận hành") && (
+                  <button
+                    onClick={(e) => {
+                      setShowDetailModal(false);
+                      handleOpenCancelModal(selectedTrip, e);
+                    }}
+                    style={{ padding: "8px 14px", background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    🚫 Hủy Chuyến
+                  </button>
+                )}
+              </div>
+              <button onClick={() => setShowDetailModal(false)} style={{ padding: "8px 18px", background: "#334155", color: "#ffffff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}>Đóng</button>
             </div>
           </div>
         </div>

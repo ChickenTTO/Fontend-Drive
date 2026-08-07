@@ -273,9 +273,93 @@ const VehicleFormModal = ({ isOpen, onClose, vehicle, onSave, depots = [] }) => 
   );
 };
 
+// --- Modal Xem chi tiết xe tải ---
+const VehicleDetailModal = ({ isOpen, onClose, vehicle, onEdit }) => {
+  if (!isOpen || !vehicle) return null;
+  const payload = vehicle.maxPayloadTon || (vehicle.weightCategory?.includes("3.5") ? 3.5 : 8.0);
 
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 580 }}>
+        <div className="modal-header">
+          <h3>🚛 Chi Tiết Xe Tải: <span style={{ color: "#ea580c" }}>{vehicle.licensePlate}</span></h3>
+          <button onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+            <div style={{ background: "#fff7ed", padding: 14, borderRadius: 8, border: "1px solid #fed7aa" }}>
+              <div style={{ fontSize: 12, color: "#9a3412", fontWeight: 600 }}>Biển Số Xe</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#ea580c" }}>{vehicle.licensePlate}</div>
+            </div>
+            <div style={{ background: "#eff6ff", padding: 14, borderRadius: 8, border: "1px solid #bfdbfe" }}>
+              <div style={{ fontSize: 12, color: "#1e40af", fontWeight: 600 }}>Mã Vạch Barcode</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#2563eb" }}>{vehicle.barcode || "N/A"}</div>
+            </div>
+          </div>
 
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, fontSize: 14, color: "#334155" }}>
+            <div style={{ padding: "10px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+              <span style={{ fontSize: 12, color: "#64748b", display: "block" }}>Hãng sản xuất</span>
+              <strong style={{ fontSize: 15, color: "#0f172a" }}>{vehicle.brand || "N/A"}</strong>
+            </div>
 
+            <div style={{ padding: "10px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+              <span style={{ fontSize: 12, color: "#64748b", display: "block" }}>Dòng xe (Model)</span>
+              <strong style={{ fontSize: 15, color: "#0f172a" }}>{vehicle.model || "N/A"}</strong>
+            </div>
+
+            <div style={{ padding: "10px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+              <span style={{ fontSize: 12, color: "#64748b", display: "block" }}>Năm sản xuất</span>
+              <strong style={{ fontSize: 15, color: "#0f172a" }}>{vehicle.year || 2024}</strong>
+            </div>
+
+            <div style={{ padding: "10px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+              <span style={{ fontSize: 12, color: "#64748b", display: "block" }}>Tải trọng tối đa</span>
+              <strong style={{ fontSize: 15, color: "#ea580c" }}>📦 {payload} Tấn</strong>
+            </div>
+
+            <div style={{ padding: "10px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+              <span style={{ fontSize: 12, color: "#64748b", display: "block" }}>Phân loại tải trọng</span>
+              <strong style={{ fontSize: 14, color: "#334155" }}>{vehicle.weightCategory || "Tải trung (5 - 8 tấn)"}</strong>
+            </div>
+
+            <div style={{ padding: "10px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+              <span style={{ fontSize: 12, color: "#64748b", display: "block" }}>Nhiên liệu hiện tại</span>
+              <strong style={{ fontSize: 15, color: "#ea580c" }}>⛽ {vehicle.fuelLiters || vehicle.fuelLevel || 70} Lít</strong>
+            </div>
+
+            <div style={{ padding: "10px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", gridColumn: "span 2" }}>
+              <span style={{ fontSize: 12, color: "#64748b", display: "block" }}>Bãi xe trực thuộc</span>
+              <strong style={{ fontSize: 15, color: "#0f172a" }}>🏢 {vehicle.depot?.name || "Bãi xe Futa Express"}</strong>
+            </div>
+
+            <div style={{ padding: "10px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", gridColumn: "span 2" }}>
+              <span style={{ fontSize: 12, color: "#64748b", display: "block" }}>Trạng thái vận hành</span>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>
+                {vehicle.status === "Sẵn sàng" || vehicle.status === "active" ? "🟢 Sẵn sàng hoạt động" : vehicle.status === "Đang vận hành" ? "🔵 Đang chở hàng vận hành" : "🟠 Đang sửa chữa / bảo trì"}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn-secondary" onClick={onClose}>
+            Đóng
+          </button>
+          <button
+            className="btn-primary"
+            style={{ background: "#f97316", border: "none" }}
+            onClick={() => {
+              onClose();
+              onEdit(vehicle);
+            }}
+          >
+            ✏️ Chỉnh Sửa Thông Tin
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- Xóa xe ---
 const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, vehicle, loading }) => {
@@ -323,9 +407,7 @@ const Vehicle = ({ onViewOnMap }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
 
-
-
-
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -412,9 +494,15 @@ const Vehicle = ({ onViewOnMap }) => {
         }}
       />
 
-
-
-
+      <VehicleDetailModal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        vehicle={selectedVehicle}
+        onEdit={(v) => {
+          setEditingVehicle(v);
+          setIsFormOpen(true);
+        }}
+      />
 
       <DeleteConfirmModal
         isOpen={isDeleteOpen}
@@ -429,7 +517,7 @@ const Vehicle = ({ onViewOnMap }) => {
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#0f172a" }}>🚚 Quản Lý Đội Xe Tải Futa Express</h2>
           <p style={{ color: "#64748b", fontSize: 13, marginTop: 4, margin: 0 }}>
-            Quản lý danh sách xe tải, tải trọng (Tấn), mã vạch Barcode, nhiên liệu (Lít) và bãi xe trực thuộc.
+            Danh sách đơn giản phương tiện. Nhấn "Xem thêm" để xem chi tiết đầy đủ thông tin từng xe.
           </p>
         </div>
         <button className="btn-primary" onClick={() => setIsFormOpen(true)} style={{ background: "#f97316", border: "none", padding: "10px 18px", borderRadius: 8, fontWeight: 700, cursor: "pointer" }}>
@@ -451,82 +539,88 @@ const Vehicle = ({ onViewOnMap }) => {
       {loading ? (
         <LoadingSpinner />
       ) : (
-        <div className="vehicle-grid">
-          {filteredVehicles.map((vehicle) => {
-            const payload = vehicle.maxPayloadTon || (vehicle.weightCategory?.includes("3.5") ? 3.5 : 8.0);
-
-            return (
-              <div key={vehicle._id} className="vehicle-card" style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <div>
-                    <h3 style={{ fontSize: 18, fontWeight: 800, color: "#ea580c", margin: 0 }}>{vehicle.licensePlate}</h3>
-                    <span style={{ fontSize: 12, color: "#2563eb", fontWeight: 700 }}>
-                      Barcode: {vehicle.barcode || "N/A"}
-                    </span>
-                  </div>
-                  <span style={{
-                    background: "#f0fdf4",
-                    color: "#166534",
-                    border: "1px solid #bbf7d0",
-                    padding: "3px 9px",
-                    borderRadius: 12,
-                    fontSize: 12,
-                    fontWeight: 700
-                  }}>
-                    📦 {payload} Tấn
-                  </span>
-                </div>
-
-                <div className="vehicle-info" style={{ fontSize: 13, color: "#334155" }}>
-                  <p style={{ margin: "4px 0" }}>
-                    <strong>{vehicle.brand}</strong> {vehicle.model} • Năm SX: {vehicle.year || 2024}
-                  </p>
-                  <p style={{ margin: "4px 0", color: "#64748b", fontSize: 12 }}>
-                    Phân loại: <strong>{vehicle.weightCategory || "Tải trung (5 - 8 tấn)"}</strong>
-                  </p>
-                  <p style={{ margin: "4px 0", color: "#64748b", fontSize: 12 }}>
-                    🏢 Bãi xe: <strong>{vehicle.depot?.name || "Bãi xe Futa Express"}</strong>
-                  </p>
-
-                  <div className="vehicle-status" style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <StatusIcon status={vehicle.status || "active"} />
-                      <span style={{ fontWeight: 600, fontSize: 12 }}>
-                        {vehicle.status === "Sẵn sàng" || vehicle.status === "active" ? "🟢 Sẵn sàng" : vehicle.status === "Đang vận hành" ? "🔵 Đang vận hành" : "🟠 Đang bảo trì"}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: 12, color: "#ea580c", fontWeight: 700 }}>
-                      ⛽ {vehicle.fuelLiters || vehicle.fuelLevel || 70} Lít
-                    </span>
-                  </div>
-                </div>
-
-                <div className="vehicle-actions" style={{ display: "flex", gap: 6, marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
-
-                  <button
-                    className="icon-btn"
-                    title="Sửa"
-                    onClick={() => {
-                      setEditingVehicle(vehicle);
-                      setIsFormOpen(true);
-                    }}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    className="icon-btn delete"
-                    title="Xóa"
-                    onClick={() => {
-                      setSelectedVehicle(vehicle);
-                      setIsDeleteOpen(true);
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="vehicle-table-card" style={{ background: "#ffffff", borderRadius: 10, border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: 13, color: "#64748b", textTransform: "uppercase" }}>
+                <th style={{ padding: "12px 16px" }}>Biển Số & Barcode</th>
+                <th style={{ padding: "12px 16px" }}>Hãng & Dòng Xe</th>
+                <th style={{ padding: "12px 16px" }}>Tải Trọng</th>
+                <th style={{ padding: "12px 16px" }}>Trạng Thái</th>
+                <th style={{ padding: "12px 16px", textAlign: "right" }}>Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredVehicles.length === 0 ? (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: "center", padding: "30px 16px", color: "#94a3b8" }}>
+                    📭 Không tìm thấy phương tiện nào.
+                  </td>
+                </tr>
+              ) : (
+                filteredVehicles.map((vehicle) => {
+                  const payload = vehicle.maxPayloadTon || (vehicle.weightCategory?.includes("3.5") ? 3.5 : 8.0);
+                  return (
+                    <tr key={vehicle._id} style={{ borderBottom: "1px solid #f1f5f9", fontSize: 14 }}>
+                      <td style={{ padding: "12px 16px" }}>
+                        <div style={{ fontWeight: 800, color: "#ea580c" }}>{vehicle.licensePlate}</div>
+                        <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>{vehicle.barcode || "N/A"}</div>
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <div style={{ fontWeight: 600, color: "#0f172a" }}>{vehicle.brand} {vehicle.model}</div>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>Năm SX: {vehicle.year || 2024}</div>
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <span style={{ background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa", padding: "2px 8px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
+                          📦 {payload} Tấn
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>
+                          {vehicle.status === "Sẵn sàng" || vehicle.status === "active" ? "🟢 Sẵn sàng" : vehicle.status === "Đang vận hành" ? "🔵 Đang vận hành" : "🟠 Đang bảo trì"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+                          <button
+                            style={{ background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", padding: "6px 14px", borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
+                            onClick={() => {
+                              setSelectedVehicle(vehicle);
+                              setIsDetailOpen(true);
+                            }}
+                          >
+                            👁️ Xem thêm
+                          </button>
+                          <button
+                            className="icon-btn"
+                            title="Sửa"
+                            style={{ width: 34, height: 34 }}
+                            onClick={() => {
+                              setEditingVehicle(vehicle);
+                              setIsFormOpen(true);
+                            }}
+                          >
+                            ✎
+                          </button>
+                          <button
+                            className="icon-btn delete"
+                            title="Xóa"
+                            style={{ width: 34, height: 34 }}
+                            onClick={() => {
+                              setSelectedVehicle(vehicle);
+                              setIsDeleteOpen(true);
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

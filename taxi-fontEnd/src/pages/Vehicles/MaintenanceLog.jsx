@@ -415,14 +415,14 @@ export const MaintenanceLog = () => {
               <th>Gara / Đơn Vị Thực Hiện</th>
               <th>Chi Phí (VNĐ)</th>
               <th>Ngày Tạo / ODO</th>
-              <th>Trạng Thái</th>
+              {mainViewMode !== "VEHICLE_HISTORY" && <th>Trạng Thái</th>}
               <th style={{ textAlign: "right" }}>Thao Tác</th>
             </tr>
           </thead>
           <tbody>
             {filteredTickets.length === 0 ? (
               <tr>
-                <td colSpan="8" style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
+                <td colSpan={mainViewMode === "VEHICLE_HISTORY" ? "7" : "8"} style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
                   📭 Không tìm thấy phiếu bảo dưỡng nào phù hợp.
                 </td>
               </tr>
@@ -478,7 +478,9 @@ export const MaintenanceLog = () => {
                   </td>
 
                   {/* Trạng thái */}
-                  <td>{renderStatusBadge(t.status)}</td>
+                  {mainViewMode !== "VEHICLE_HISTORY" && (
+                    <td>{renderStatusBadge(t.status)}</td>
+                  )}
 
                   {/* Thao tác */}
                   <td>

@@ -223,9 +223,6 @@ const App = () => {
               </div>
             )}
           </div>
-          <button className="btn-logout-mini" onClick={handleLogout} title="Đăng xuất ngay">
-            Đăng xuất
-          </button>
         </div>
       )}
 

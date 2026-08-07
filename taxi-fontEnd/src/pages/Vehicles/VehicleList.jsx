@@ -403,6 +403,9 @@ const Vehicle = ({ onViewOnMap }) => {
   const [depots, setDepots] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [payloadFilter, setPayloadFilter] = useState("ALL");
+  const [depotFilter, setDepotFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
@@ -468,12 +471,46 @@ const Vehicle = ({ onViewOnMap }) => {
     }
   };
 
-  const filteredVehicles = vehicles.filter(v =>
-    v.licensePlate?.toLowerCase().includes(search.toLowerCase()) ||
-    v.barcode?.toLowerCase().includes(search.toLowerCase()) ||
-    v.brand?.toLowerCase().includes(search.toLowerCase()) ||
-    v.weightCategory?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredVehicles = vehicles.filter((v) => {
+    // Search keyword match
+    const q = search.toLowerCase().trim();
+    if (q) {
+      const matchPlate = v.licensePlate?.toLowerCase().includes(q);
+      const matchBarcode = v.barcode?.toLowerCase().includes(q);
+      const matchBrand = v.brand?.toLowerCase().includes(q);
+      const matchModel = v.model?.toLowerCase().includes(q);
+      const matchCat = v.weightCategory?.toLowerCase().includes(q);
+      const matchDepot = (v.depot?.name || v.depot || "").toLowerCase().includes(q);
+      if (!matchPlate && !matchBarcode && !matchBrand && !matchModel && !matchCat && !matchDepot) {
+        return false;
+      }
+    }
+
+    // Payload / Trọng tải filter
+    if (payloadFilter !== "ALL") {
+      const payload = v.maxPayloadTon || (v.weightCategory?.includes("3.5") ? 3.5 : 8.0);
+      if (payloadFilter === "LIGHT" && payload > 3.5) return false;
+      if (payloadFilter === "MEDIUM" && (payload <= 3.5 || payload > 8.0)) return false;
+      if (payloadFilter === "HEAVY" && payload <= 8.0) return false;
+    }
+
+    // Depot / Bãi xe filter
+    if (depotFilter !== "ALL") {
+      const vDepotName = v.depot?.name || v.depot || "";
+      const vDepotId = v.depot?._id || v.depotId || "";
+      const matchDepot = vDepotId === depotFilter || vDepotName === depotFilter || vDepotName.includes(depotFilter);
+      if (!matchDepot) return false;
+    }
+
+    // Status / Trạng thái filter
+    if (statusFilter !== "ALL") {
+      if (statusFilter === "Sẵn sàng" && !(v.status === "Sẵn sàng" || v.status === "active")) return false;
+      if (statusFilter === "Đang vận hành" && v.status !== "Đang vận hành") return false;
+      if (statusFilter === "Đang bảo trì" && !(v.status === "Đang bảo trì" || v.status === "Đang sửa chữa")) return false;
+    }
+
+    return true;
+  });
 
   return (
     <div className="vehicle-page">
@@ -525,15 +562,88 @@ const Vehicle = ({ onViewOnMap }) => {
         </button>
       </div>
 
-      {/* Search Bar */}
-      <div style={{ background: "#ffffff", padding: 12, borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 20 }}>
-        <input
-          type="text"
-          placeholder="🔍 Tìm kiếm theo Biển số xe, Mã vạch Barcode, Hãng xe, Phân loại tải trọng..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 14 }}
-        />
+      {/* Search & Filter Controls Bar */}
+      <div style={{ background: "#ffffff", padding: 16, borderRadius: 10, border: "1px solid #e2e8f0", marginBottom: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.03)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr 1.2fr 1fr", gap: 12, alignItems: "center" }}>
+          {/* Tìm kiếm */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4, display: "block" }}>🔍 Tìm kiếm xe:</label>
+            <input
+              type="text"
+              placeholder="Nhập biển số, barcode, hãng xe..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13.5 }}
+            />
+          </div>
+
+          {/* Lọc Trọng Tải */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4, display: "block" }}>📦 Trọng tải:</label>
+            <select
+              value={payloadFilter}
+              onChange={(e) => setPayloadFilter(e.target.value)}
+              style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13.5, background: "#ffffff" }}
+            >
+              <option value="ALL">Tất cả trọng tải</option>
+              <option value="LIGHT">🚚 Tải nhẹ (≤ 3.5 tấn)</option>
+              <option value="MEDIUM">🚛 Tải trung (5 - 8 tấn)</option>
+              <option value="HEAVY">🚜 Tải nặng (&gt; 8 tấn)</option>
+            </select>
+          </div>
+
+          {/* Lọc Khu Bãi */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4, display: "block" }}>🏢 Khu bãi xe:</label>
+            <select
+              value={depotFilter}
+              onChange={(e) => setDepotFilter(e.target.value)}
+              style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13.5, background: "#ffffff" }}
+            >
+              <option value="ALL">Tất cả bãi xe</option>
+              {depots.map((d) => (
+                <option key={d._id || d.name} value={d.name || d._id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Lọc Trạng Thái */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4, display: "block" }}>🚦 Trạng thái:</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13.5, background: "#ffffff" }}
+            >
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="Sẵn sàng">🟢 Sẵn sàng</option>
+              <option value="Đang vận hành">🔵 Đang vận hành</option>
+              <option value="Đang bảo trì">🟠 Đang bảo trì</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Summary & Reset Button */}
+        {(search || payloadFilter !== "ALL" || depotFilter !== "ALL" || statusFilter !== "ALL") && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, paddingTop: 10, borderTop: "1px dashed #e2e8f0" }}>
+            <span style={{ fontSize: 13, color: "#ea580c", fontWeight: 700 }}>
+              📊 Đang tìm thấy {filteredVehicles.length} / {vehicles.length} phương tiện phù hợp
+            </span>
+            <button
+              onClick={() => {
+                setSearch("");
+                setPayloadFilter("ALL");
+                setDepotFilter("ALL");
+                setStatusFilter("ALL");
+              }}
+              style={{ background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1", padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              🔄 Xóa tất cả bộ lọc
+            </button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -546,6 +656,7 @@ const Vehicle = ({ onViewOnMap }) => {
                 <th style={{ padding: "12px 16px" }}>Biển Số & Barcode</th>
                 <th style={{ padding: "12px 16px" }}>Hãng & Dòng Xe</th>
                 <th style={{ padding: "12px 16px" }}>Tải Trọng</th>
+                <th style={{ padding: "12px 16px" }}>Bãi Xe Trực Thuộc</th>
                 <th style={{ padding: "12px 16px" }}>Trạng Thái</th>
                 <th style={{ padding: "12px 16px", textAlign: "right" }}>Thao Tác</th>
               </tr>
@@ -553,8 +664,8 @@ const Vehicle = ({ onViewOnMap }) => {
             <tbody>
               {filteredVehicles.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: "center", padding: "30px 16px", color: "#94a3b8" }}>
-                    📭 Không tìm thấy phương tiện nào.
+                  <td colSpan="6" style={{ textAlign: "center", padding: "30px 16px", color: "#94a3b8" }}>
+                    📭 Không tìm thấy phương tiện nào phù hợp với bộ lọc.
                   </td>
                 </tr>
               ) : (
@@ -574,6 +685,11 @@ const Vehicle = ({ onViewOnMap }) => {
                         <span style={{ background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa", padding: "2px 8px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
                           📦 {payload} Tấn
                         </span>
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <div style={{ fontWeight: 600, color: "#334155", fontSize: 13 }}>
+                          🏢 {vehicle.depot?.name || vehicle.depot || "Bãi xe Futa Express"}
+                        </div>
                       </td>
                       <td style={{ padding: "12px 16px" }}>
                         <span style={{ fontSize: 13, fontWeight: 600 }}>

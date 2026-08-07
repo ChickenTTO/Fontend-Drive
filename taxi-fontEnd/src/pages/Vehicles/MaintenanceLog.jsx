@@ -19,7 +19,7 @@ export const MaintenanceLog = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [mainViewMode, setMainViewMode] = useState("LIST"); // 'LIST' or 'VEHICLE_HISTORY'
-  const [selectedVehicleForHistory, setSelectedVehicleForHistory] = useState("");
+  const [selectedVehicleForHistory, setSelectedVehicleForHistory] = useState("ALL");
   const [loading, setLoading] = useState(false);
 
   // Modals state
@@ -66,8 +66,8 @@ export const MaintenanceLog = () => {
       setVehicles(loadedVehicles);
       setTickets(loadedTickets);
 
-      if (loadedVehicles.length > 0 && loadedVehicles[0].licensePlate) {
-        setSelectedVehicleForHistory(loadedVehicles[0].licensePlate);
+      if (loadedVehicles.length > 0) {
+        setSelectedVehicleForHistory("ALL");
       }
     } catch (err) {
       console.error('Error loading maintenance real data:', err);
@@ -189,9 +189,12 @@ export const MaintenanceLog = () => {
   // FILTERING LOGIC (FEATURE 1 & FEATURE 5)
   // ----------------------------------------------------
   const filteredTickets = tickets.filter((t) => {
-    // Mode 5 filter: Vehicle History
+    // Mode 5 filter: Vehicle History (Chỉ hiện xe/phiếu đã HOÀN THÀNH)
     if (mainViewMode === "VEHICLE_HISTORY") {
-      if (selectedVehicleForHistory && t.licensePlate !== selectedVehicleForHistory) {
+      if (selectedVehicleForHistory && selectedVehicleForHistory !== "ALL" && t.licensePlate !== selectedVehicleForHistory) {
+        return false;
+      }
+      if (t.status !== "Hoàn thành") {
         return false;
       }
     }
@@ -238,8 +241,12 @@ export const MaintenanceLog = () => {
     }
   };
 
-  // Stats for Selected Vehicle in History Mode (Feature 5)
-  const vehicleHistoryTickets = tickets.filter((t) => t.licensePlate === selectedVehicleForHistory);
+  // Stats for Selected Vehicle in History Mode (Feature 5 - chỉ đếm các đợt đã hoàn thành)
+  const vehicleHistoryTickets = tickets.filter(
+    (t) =>
+      (selectedVehicleForHistory === "ALL" || !selectedVehicleForHistory || t.licensePlate === selectedVehicleForHistory) &&
+      t.status === "Hoàn thành"
+  );
   const vehicleTotalSpent = vehicleHistoryTickets.reduce((sum, t) => sum + (t.actualCost || t.estimatedCost || 0), 0);
   const vehicleLastOdo = vehicleHistoryTickets[0]?.odometer || 0;
 
@@ -315,15 +322,21 @@ export const MaintenanceLog = () => {
       <div className="main-view-tabs">
         <button
           className={`main-tab-btn ${mainViewMode === "LIST" ? "active" : ""}`}
-          onClick={() => setMainViewMode("LIST")}
+          onClick={() => {
+            setMainViewMode("LIST");
+            setStatusFilter("ALL");
+          }}
         >
-          📋 Chức Năng 1: Danh Sách Phiếu Bảo Dưỡng
+          📋 Danh Sách Phiếu Bảo Dưỡng
         </button>
         <button
           className={`main-tab-btn ${mainViewMode === "VEHICLE_HISTORY" ? "active" : ""}`}
-          onClick={() => setMainViewMode("VEHICLE_HISTORY")}
+          onClick={() => {
+            setMainViewMode("VEHICLE_HISTORY");
+            setStatusFilter("ALL");
+          }}
         >
-          📜 Chức Năng 5: Lịch Sử Bảo Dưỡng Theo Từng Xe
+          📜 Lịch Sử Bảo Dưỡng Theo Từng Xe
         </button>
       </div>
 
@@ -339,6 +352,7 @@ export const MaintenanceLog = () => {
             value={selectedVehicleForHistory}
             onChange={(e) => setSelectedVehicleForHistory(e.target.value)}
           >
+            <option value="ALL">🚛 Tất cả các xe ({vehicles.length} phương tiện)</option>
             {vehicles.map((v) => (
               <option key={v._id || v.licensePlate} value={v.licensePlate}>
                 [{v.licensePlate}] {v.brand} {v.model || ""}
@@ -351,11 +365,18 @@ export const MaintenanceLog = () => {
               Số đợt bảo dưỡng: <strong>{vehicleHistoryTickets.length} đợt</strong>
             </div>
             <div className="vehicle-summary-item">
-              Tổng chi phí bảo dưỡng xe này: <strong>{formatVND(vehicleTotalSpent)}</strong>
+              {selectedVehicleForHistory === "ALL" ? "Tổng chi phí tất cả xe:" : "Tổng chi phí bảo dưỡng xe này:"}{" "}
+              <strong>{formatVND(vehicleTotalSpent)}</strong>
             </div>
-            <div className="vehicle-summary-item">
-              Mốc ODO gần nhất: <strong>{(vehicleLastOdo || 0).toLocaleString()} Km</strong>
-            </div>
+            {selectedVehicleForHistory === "ALL" ? (
+              <div className="vehicle-summary-item">
+                Số xe đã bảo dưỡng: <strong>{new Set(vehicleHistoryTickets.map((t) => t.licensePlate)).size} xe</strong>
+              </div>
+            ) : (
+              <div className="vehicle-summary-item">
+                Mốc ODO gần nhất: <strong>{(vehicleLastOdo || 0).toLocaleString()} Km</strong>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -381,23 +402,27 @@ export const MaintenanceLog = () => {
           >
             Tất cả ({mainViewMode === "VEHICLE_HISTORY" ? vehicleHistoryTickets.length : totalTicketsCount})
           </button>
-          <button
-            className={`filter-pill ${statusFilter === "Chờ bảo dưỡng" ? "active" : ""}`}
-            onClick={() => setStatusFilter("Chờ bảo dưỡng")}
-          >
-            ⏳ Chờ bảo dưỡng
-          </button>
-          <button
-            className={`filter-pill ${statusFilter === "Đang bảo dưỡng" ? "active" : ""}`}
-            onClick={() => setStatusFilter("Đang bảo dưỡng")}
-          >
-            🛠️ Đang bảo dưỡng
-          </button>
+          {mainViewMode !== "VEHICLE_HISTORY" && (
+            <>
+              <button
+                className={`filter-pill ${statusFilter === "Chờ bảo dưỡng" ? "active" : ""}`}
+                onClick={() => setStatusFilter("Chờ bảo dưỡng")}
+              >
+                ⏳ Chờ bảo dưỡng
+              </button>
+              <button
+                className={`filter-pill ${statusFilter === "Đang bảo dưỡng" ? "active" : ""}`}
+                onClick={() => setStatusFilter("Đang bảo dưỡng")}
+              >
+                🛠️ Đang bảo dưỡng
+              </button>
+            </>
+          )}
           <button
             className={`filter-pill ${statusFilter === "Hoàn thành" ? "active" : ""}`}
             onClick={() => setStatusFilter("Hoàn thành")}
           >
-            ✅ Hoàn thành
+            ✅ Hoàn thành ({mainViewMode === "VEHICLE_HISTORY" ? vehicleHistoryTickets.length : doneCount})
           </button>
         </div>
       </div>

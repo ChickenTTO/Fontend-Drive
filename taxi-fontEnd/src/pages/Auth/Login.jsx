@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import "./Login.css";
-import { GoogleIcon } from "../../components/icons";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 
@@ -71,6 +70,10 @@ const Login = () => {
     }
   };
 
+  const handleForgotPassword = () => {
+    alert("Vui lòng liên hệ Admin qua email dat@gmail.com để xin cấp lại mật khẩu.");
+  };
+
   return (
     <div className="login-container">
       <div className="login-card">
@@ -100,6 +103,24 @@ const Login = () => {
               placeholder="Nhập mật khẩu"
               autoComplete="current-password"
             />
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+              <button
+                type="button"
+                className="btn-forgot-password"
+                onClick={handleForgotPassword}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#2563eb",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  padding: 0
+                }}
+              >
+                Quên mật khẩu?
+              </button>
+            </div>
           </div>
 
           {error && <div className="error-text">{error}</div>}
@@ -108,21 +129,6 @@ const Login = () => {
             {loading ? "Đang đăng nhập..." : "Đăng nhập"}
           </button>
         </form>
-
-        <div className="divider">Hoặc</div>
-
-        <div className="login-actions">
-          <button
-            type="button"
-            onClick={() =>
-              alert("Tính năng đăng nhập Google đang được phát triển")
-            }
-            className="google-btn"
-          >
-            <GoogleIcon />
-            <span>Đăng nhập với Google</span>
-          </button>
-        </div>
       </div>
     </div>
   );

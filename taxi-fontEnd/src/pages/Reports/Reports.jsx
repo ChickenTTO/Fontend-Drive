@@ -343,14 +343,22 @@ const Reports = ({ reports = [], setReports, drivers = [], vehicles = [] }) => {
         });
         if (!res.ok) throw new Error('Không thể tải danh sách chuyến đi');
         const json = await res.json();
-        const bookings = json.data || [];
-        
-        const mappedReports = bookings
-          .filter(trip => trip.status === 'completed' || trip.status === 'Hoàn tất')
+        const [bkRes, tripRes] = await Promise.all([
+          fetch(`${apiBase}/bookings`, { headers }).then(r => r.ok ? r.json() : { data: [] }),
+          fetch(`${apiBase}/trips`, { headers }).then(r => r.ok ? r.json() : { data: [] })
+        ]);
+
+        const allTrips = [
+          ...(bkRes.data || []),
+          ...(tripRes.data || [])
+        ];
+
+        const mappedReports = allTrips
+          .filter(trip => trip.status === 'completed' || trip.status === 'Hoàn tất' || trip.status === 'Đang vận hành')
           .map(trip => {
              const dateStr = trip.endTime 
-               ? trip.endTime.split('T')[0] 
-               : (trip.completedTime ? trip.completedTime.split('T')[0] : new Date(trip.updatedAt || trip.createdAt).toISOString().split('T')[0]);
+               ? String(trip.endTime).split('T')[0] 
+               : (trip.completedTime ? String(trip.completedTime).split('T')[0] : new Date(trip.updatedAt || trip.createdAt || Date.now()).toISOString().split('T')[0]);
              
              const drvId = trip.driver && typeof trip.driver === 'object' ? trip.driver._id : trip.driver;
              const vehId = trip.vehicle && typeof trip.vehicle === 'object' ? trip.vehicle._id : trip.vehicle;
@@ -360,10 +368,10 @@ const Reports = ({ reports = [], setReports, drivers = [], vehicles = [] }) => {
                date: dateStr,
                driverId: drvId,
                vehicleId: vehId,
-               revenue: trip.fare || trip.finalPrice || 0,
+               revenue: trip.fare || trip.finalPrice || trip.price || 0,
                distance: trip.distance || 0,
-               customerTrips: 1,
-               cargoTrips: 0,
+               customerTrips: trip.cargoType ? 0 : 1,
+               cargoTrips: trip.cargoType ? 1 : 0,
                startTime: trip.startTime || trip.createdAt,
                endTime: trip.endTime || trip.completedTime
              };

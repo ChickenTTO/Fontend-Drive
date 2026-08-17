@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './DriverList.css';
 import { StatusIcon, ArrowLeftIcon } from '../../components/icons';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 // ----------------- DRIVER DETAIL VIEW -----------------
 const DriverDetailView = ({ driver, vehicles, trips, onBack }) => {

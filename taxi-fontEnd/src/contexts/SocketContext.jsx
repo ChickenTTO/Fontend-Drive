@@ -7,7 +7,8 @@ export function SocketProvider({ children }) {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    socketRef.current = io('http://localhost:5000', {
+    const socketUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+    socketRef.current = io(socketUrl, {
       transports: ['websocket'],
     });
 

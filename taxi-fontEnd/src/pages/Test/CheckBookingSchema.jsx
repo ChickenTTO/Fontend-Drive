@@ -5,7 +5,7 @@ const CheckBookingSchema = () => {
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState('');
 
-  const API_URL = 'http://localhost:5000/api';
+  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchBookings();

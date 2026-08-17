@@ -41,11 +41,13 @@ export const StaffList = () => {
     { _id: "st-5", username: "accountant_hoa", fullName: "Hoàng Thị Hoa", email: "hoa.accountant@futa.vn", phone: "0945678901", role: "accountant", isActive: true, createdAt: "2026-02-10" }
   ];
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
   const fetchStaff = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("authToken") || localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/admin/users?search=${search}&role=${roleFilter}`, {
+      const res = await fetch(`${API_BASE}/admin/users?search=${search}&role=${roleFilter}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -81,7 +83,7 @@ export const StaffList = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("authToken") || localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/admin/users", {
+      const res = await fetch(`${API_BASE}/admin/users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -127,7 +129,7 @@ export const StaffList = () => {
     if (!selectedStaff) return;
     try {
       const token = localStorage.getItem("authToken") || localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/admin/users/${selectedStaff._id}`, {
+      const res = await fetch(`${API_BASE}/admin/users/${selectedStaff._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -161,7 +163,7 @@ export const StaffList = () => {
   const handleToggleStatus = async (staffId, currentStatus) => {
     try {
       const token = localStorage.getItem("authToken") || localStorage.getItem("token");
-      await fetch(`http://localhost:5000/api/admin/users/${staffId}/status`, {
+      await fetch(`${API_BASE}/admin/users/${staffId}/status`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -178,7 +180,7 @@ export const StaffList = () => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa nhân sự này khỏi hệ thống?")) return;
     try {
       const token = localStorage.getItem("authToken") || localStorage.getItem("token");
-      await fetch(`http://localhost:5000/api/admin/users/${staffId}`, {
+      await fetch(`${API_BASE}/admin/users/${staffId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });

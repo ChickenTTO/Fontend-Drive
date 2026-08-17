@@ -144,10 +144,11 @@ const App = () => {
           'Authorization': `Bearer ${token}`
         };
 
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
         const [drvRes, vehRes, custRes] = await Promise.all([
-          fetch('http://localhost:5000/api/drivers', { headers }).then(r => r.ok ? r.json() : { data: [] }),
-          fetch('http://localhost:5000/api/vehicles', { headers }).then(r => r.ok ? r.json() : { data: [] }),
-          fetch('http://localhost:5000/api/customers', { headers }).then(r => r.ok ? r.json() : { data: [] })
+          fetch(`${apiBase}/drivers`, { headers }).then(r => r.ok ? r.json() : { data: [] }),
+          fetch(`${apiBase}/vehicles`, { headers }).then(r => r.ok ? r.json() : { data: [] }),
+          fetch(`${apiBase}/customers`, { headers }).then(r => r.ok ? r.json() : { data: [] })
         ]);
 
         if (drvRes.data) setDrivers(drvRes.data);

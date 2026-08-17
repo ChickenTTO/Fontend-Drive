@@ -158,40 +158,21 @@ export const FreightDispatch = () => {
         freightTripApi.getAllTrips().catch(() => ({ data: { data: [] } }))
       ]);
 
-      if (depRes.data?.data && depRes.data.data.length > 0) {
-        setDepots(depRes.data.data);
-        setSelectedDepotIdForDispatch(depRes.data.data[0]._id);
-      } else {
-        setDepots(mockDepots);
-        setSelectedDepotIdForDispatch(mockDepots[0]._id);
-      }
+      const realDepots = depRes.data?.data || depRes.data;
+      const realDrivers = drvRes.data?.data || drvRes.data;
+      const realVehicles = vehRes.data?.data || vehRes.data;
+      const realTrips = tripRes.data?.data || tripRes.data;
 
-      if (drvRes.data?.data && drvRes.data.data.length > 0) {
-        setDrivers(drvRes.data.data);
-      } else {
-        setDrivers(mockDrivers);
-      }
+      setDepots(Array.isArray(realDepots) ? realDepots : []);
+      setDrivers(Array.isArray(realDrivers) ? realDrivers : []);
+      setVehicles(Array.isArray(realVehicles) ? realVehicles : []);
+      setTrips(Array.isArray(realTrips) ? realTrips : []);
 
-      if (vehRes.data?.data && vehRes.data.data.length > 0) {
-        setVehicles(vehRes.data.data);
-      } else {
-        setVehicles(mockVehicles);
-      }
-
-      if (tripRes.data?.data && tripRes.data.data.length > 0) {
-        setTrips(tripRes.data.data);
-        const pending = tripRes.data.data.find(t => t.status === "Đang chờ");
-        if (pending) setSelectedTripIdForDispatch(pending._id);
-      } else {
-        setTrips(mockTrips);
-        setSelectedTripIdForDispatch(mockTrips[0]._id);
+      if (Array.isArray(realTrips) && realTrips.length > 0) {
+        setSelectedTripIdForDispatch(realTrips[0]._id);
       }
     } catch (err) {
-      setDepots(mockDepots);
-      setVehicles(mockVehicles);
-      setDrivers(mockDrivers);
-      setTrips(mockTrips);
-      setSelectedTripIdForDispatch(mockTrips[0]._id);
+      console.error("Error fetching dispatch data:", err);
     } finally {
       setLoading(false);
     }
@@ -258,44 +239,24 @@ export const FreightDispatch = () => {
 
     try {
       setLoading(true);
-      const res = await freightTripApi.dispatchTrip(currentDispatchTrip._id, {
-        vehicleId: selectedVehicleForDispatch._id,
-        driverId: selectedDriverForDispatch._id,
-        startDepotId: selectedDepotIdForDispatch,
+      await freightTripApi.updateTrip(currentDispatchTrip._id, {
+        vehicle: selectedVehicleForDispatch._id,
+        driver: selectedDriverForDispatch._id,
+        status: 'Đang vận hành',
         notes: dispatchNotes
       });
 
-      if (res.data?.success) {
-        setMessage({ type: "success", text: res.data.message });
-      } else {
-        executeLocalDispatchFallback();
-      }
+      setMessage({
+        type: "success",
+        text: `🎉 ĐÃ XÁC NHẬN ĐIỀU PHỐI THÀNH CÔNG!\nChuyến [${currentDispatchTrip.tripCode}] đã gán Xe ${selectedVehicleForDispatch.licensePlate} & Tài xế ${selectedDriverForDispatch.fullName || selectedDriverForDispatch.username}.`
+      });
       fetchInitialData();
     } catch (err) {
-      executeLocalDispatchFallback();
+      const errMsg = err.response?.data?.message || err.message;
+      setMessage({ type: "error", text: "Lỗi điều phối chuyến: " + errMsg });
     } finally {
       setLoading(false);
     }
-  };
-
-  const executeLocalDispatchFallback = () => {
-    setTrips(trips.map(t => {
-      if (t._id === currentDispatchTrip._id) {
-        return {
-          ...t,
-          status: "Đang chờ",
-          vehicle: { _id: selectedVehicleForDispatch._id, licensePlate: selectedVehicleForDispatch.licensePlate, brand: selectedVehicleForDispatch.brand },
-          driver: { _id: selectedDriverForDispatch._id, fullName: selectedDriverForDispatch.fullName, phone: selectedDriverForDispatch.phone },
-          notes: dispatchNotes || t.notes
-        };
-      }
-      return t;
-    }));
-
-    setMessage({
-      type: "success",
-      text: `🎉 ĐÃ XÁC NHẬN ĐIỀU PHỐI THÀNH CÔNG!\nChuyến [${currentDispatchTrip.tripCode}] đã gán Xe ${selectedVehicleForDispatch.licensePlate} & Tài xế ${selectedDriverForDispatch.fullName}.`
-    });
   };
 
   const handleOpenCreateModal = () => {
@@ -328,37 +289,23 @@ export const FreightDispatch = () => {
       return;
     }
 
-    const vehicleObj = vehicles.find(v => v._id === formData.vehicleId);
-    const driverObj = drivers.find(d => d._id === formData.driverId);
-    const startObj = depots.find(d => d._id === formData.startDepotId);
-    const endObj = depots.find(d => d._id === formData.endDepotId);
-
-    const newTrip = {
-      _id: "t-" + Date.now(),
-      tripCode: formData.tripCode || ("FUTA-TRIP-" + Math.floor(100 + Math.random() * 900)),
-      status: "Đang chờ",
-      customerName: formData.customerName || "Khách hàng Futa Express",
-      customerPhone: formData.customerPhone || "0900000000",
-      cargoType: formData.cargoType,
-      cargoWeightTon: formData.cargoWeightTon,
-      fare: formData.fare,
-      distance: formData.distance,
-      startDepot: { _id: startObj?._id, name: startObj?.name || "Bãi xe đi", code: startObj?.code || "GO" },
-      startLocation: formData.startLocation,
-      endDepot: { _id: endObj?._id, name: endObj?.name || "Bãi xe đến", code: endObj?.code || "ARR" },
-      endLocation: formData.endLocation,
-      vehicle: { _id: vehicleObj?._id, licensePlate: vehicleObj?.licensePlate || "51C-888.99", brand: vehicleObj?.brand || "Xe Tải" },
-      driver: { _id: driverObj?._id, fullName: driverObj?.fullName || "Tài xế Futa", phone: driverObj?.phone || "" },
-      startTime: formData.startTime.replace("T", " "),
-      estimatedEndTime: formData.estimatedEndTime.replace("T", " "),
-      createdAt: new Date().toISOString().replace("T", " ").substring(0, 16),
-      notes: formData.notes
-    };
-
-    setTrips([newTrip, ...trips]);
-    setSelectedTripIdForDispatch(newTrip._id);
-    setMessage({ type: "success", text: `Đã tạo chuyến mới [${newTrip.tripCode}] và đưa vào Trung tâm Điều phối!` });
-    setShowCreateModal(false);
+    try {
+      setLoading(true);
+      const res = await freightTripApi.createTrip({
+        ...formData,
+        vehicle: formData.vehicleId,
+        driver: formData.driverId
+      });
+      const createdCode = res.data?.data?.tripCode || formData.tripCode;
+      setMessage({ type: "success", text: `Đã tạo chuyến mới [${createdCode}] và lưu thành công vào Database!` });
+      setShowCreateModal(false);
+      fetchInitialData();
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message;
+      setMessage({ type: "error", text: "Lỗi khởi tạo chuyến đi: " + errMsg });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusBadge = (status) => {

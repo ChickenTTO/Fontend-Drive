@@ -144,10 +144,10 @@ const DriverList = () => {
     try {
       setLoading(true);
       await fetch(`${API_BASE}/drivers/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
-      setDrivers(prev => prev.filter(d => d._id !== id));
       alert('Xóa thành công!');
+      fetchData();
     } catch (err) {
-      alert('Xóa thất bại');
+      alert('Xóa thất bại: ' + err.message);
     } finally { setLoading(false); }
   };
 
@@ -159,21 +159,18 @@ const DriverList = () => {
       const payload = { ...formData, username: formData.username || formData.phone };
       let res;
       if (editingDriver) {
-        res = await fetch(`${API_BASE}/drivers/${editingDriver._id}`, { method: 'PUT', headers, body: JSON.stringify(payload) });
+        res = await fetch(`${API_BASE}/drivers/${editingDriver._id}`, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       } else {
-        res = await fetch(`${API_BASE}/drivers`, { method: 'POST', headers, body: JSON.stringify(payload) });
+        res = await fetch(`${API_BASE}/drivers`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       }
       const data = await res.json();
       if (!res.ok) {
         alert('Thất bại: ' + (data.message || 'Lỗi Server'));
         return;
       }
-      if (editingDriver) {
-        setDrivers(prev => prev.map(d => d._id === editingDriver._id ? { ...d, ...payload } : d));
-      } else {
-        setDrivers(prev => [...prev, data.data || {}]);
-      }
+      alert(editingDriver ? 'Cập nhật thành công!' : 'Thêm tài xế mới thành công!');
       setIsFormModalOpen(false);
+      fetchData();
     } catch (err) {
       alert('Thất bại: ' + err.message);
     } finally { setLoading(false); }

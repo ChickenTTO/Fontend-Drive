@@ -41,14 +41,10 @@ export const DepotList = ({ onSelectDepot }) => {
         try {
             setLoading(true);
             const res = await depotApi.getAllDepots();
-            if (res.data && res.data.data && res.data.data.length > 0) {
-                setDepots(res.data.data);
-            } else {
-                setDepots(mockDepots);
-            }
+            const realDepots = res.data?.data || res.data;
+            setDepots(Array.isArray(realDepots) ? realDepots : []);
         } catch (err) {
             console.error('Error fetching depots:', err);
-            setDepots(mockDepots);
         } finally {
             setLoading(false);
         }
@@ -90,45 +86,18 @@ export const DepotList = ({ onSelectDepot }) => {
 
         try {
             if (editingDepot) {
-                // Update
-                const res = await depotApi.updateDepot(editingDepot._id, formData);
-                if (res.data?.success) {
-                    setMessage({ type: 'success', text: `Đã cập nhật Bãi xe "${formData.name}" thành công!` });
-                } else {
-                    setDepots(depots.map(d => d._id === editingDepot._id ? { ...d, ...formData } : d));
-                    setMessage({ type: 'success', text: `Đã cập nhật Bãi xe "${formData.name}"!` });
-                }
+                await depotApi.updateDepot(editingDepot._id, formData);
+                setMessage({ type: 'success', text: `Đã cập nhật Bãi xe "${formData.name}" thành công!` });
             } else {
-                // Create
-                const res = await depotApi.createDepot(formData);
-                if (res.data?.success) {
-                    setMessage({ type: 'success', text: `Đã thêm mới Bãi xe "${formData.name}" thành công!` });
-                } else {
-                    const newDepot = {
-                        _id: 'dep-' + Date.now(),
-                        ...formData,
-                        stats: { totalVehicles: 0, readyVehicles: 0, operatingVehicles: 0, maintenanceVehicles: 0, byWeight: { light: 0, medium: 0, heavy: 0 } }
-                    };
-                    setDepots([...depots, newDepot]);
-                    setMessage({ type: 'success', text: `Đã thêm Bãi xe mới!` });
-                }
+                await depotApi.createDepot(formData);
+                setMessage({ type: 'success', text: `Đã thêm mới Bãi xe "${formData.name}" thành công!` });
             }
             setShowModal(false);
             fetchDepots();
         } catch (err) {
-            const errMsg = err.response?.data?.message || 'Có lỗi xảy ra khi lưu Bãi xe.';
-            if (editingDepot) {
-                setDepots(depots.map(d => d._id === editingDepot._id ? { ...d, ...formData } : d));
-                setMessage({ type: 'success', text: `Đã cập nhật Bãi xe "${formData.name}"!` });
-            } else {
-                const newDepot = {
-                    _id: 'dep-' + Date.now(),
-                    ...formData,
-                    stats: { totalVehicles: 0, readyVehicles: 0, operatingVehicles: 0, maintenanceVehicles: 0, byWeight: { light: 0, medium: 0, heavy: 0 } }
-                };
-                setDepots([...depots, newDepot]);
-                setMessage({ type: 'success', text: `Đã thêm Bãi xe mới!` });
-            }
+            const errMsg = err.response?.data?.message || err.message || 'Có lỗi xảy ra khi lưu Bãi xe.';
+            setMessage({ type: 'error', text: `Lỗi: ${errMsg}` });
+            fetchDepots();
             setShowModal(false);
         }
     };
@@ -138,18 +107,13 @@ export const DepotList = ({ onSelectDepot }) => {
         if (!window.confirm(`Bạn có chắc chắn muốn xóa Bãi xe "${depot.name}" [${depot.code}]?`)) return;
 
         try {
-            const res = await depotApi.deleteDepot(depot._id);
-            if (res.data?.success) {
-                setMessage({ type: 'success', text: res.data.message });
-            } else {
-                setDepots(depots.filter(d => d._id !== depot._id));
-                setMessage({ type: 'success', text: `Đã xóa Bãi xe "${depot.name}"!` });
-            }
+            await depotApi.deleteDepot(depot._id);
+            setMessage({ type: 'success', text: `Đã xóa Bãi xe "${depot.name}" thành công!` });
             fetchDepots();
         } catch (err) {
-            const errMsg = err.response?.data?.message || 'Không thể xóa Bãi xe này.';
-            setDepots(depots.filter(d => d._id !== depot._id));
-            setMessage({ type: 'success', text: `Đã xóa Bãi xe "${depot.name}"!` });
+            const errMsg = err.response?.data?.message || err.message || 'Không thể xóa Bãi xe này.';
+            setMessage({ type: 'error', text: `Lỗi: ${errMsg}` });
+            fetchDepots();
         }
     };
 

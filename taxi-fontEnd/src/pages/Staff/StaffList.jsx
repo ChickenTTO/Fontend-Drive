@@ -51,28 +51,13 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
-      if (data.success && data.data && data.data.length > 0) {
-        setStaffMembers(data.data);
-      } else {
-        setStaffMembers(filterMockStaff());
-      }
+      const realStaff = data.data || data;
+      setStaffMembers(Array.isArray(realStaff) ? realStaff : []);
     } catch (err) {
-      setStaffMembers(filterMockStaff());
+      console.error('Error fetching staff:', err);
     } finally {
       setLoading(false);
     }
-  };
-
-  const filterMockStaff = () => {
-    return mockStaff.filter((s) => {
-      const matchesSearch =
-        s.fullName.toLowerCase().includes(search.toLowerCase()) ||
-        s.username.toLowerCase().includes(search.toLowerCase()) ||
-        s.email.toLowerCase().includes(search.toLowerCase()) ||
-        s.phone.includes(search);
-      const matchesRole = roleFilter === "ALL" || s.role === roleFilter;
-      return matchesSearch && matchesRole;
-    });
   };
 
   useEffect(() => {
@@ -92,22 +77,16 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api
         body: JSON.stringify(formData)
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success !== false) {
         setMessage({ type: "success", text: "Thêm nhân sự mới thành công!" });
         setShowAddModal(false);
         setFormData({ username: "", fullName: "", email: "", phone: "", password: "", role: "dispatcher" });
         fetchStaff();
       } else {
-        const newMember = { _id: "st-" + Date.now(), ...formData, isActive: true, createdAt: new Date().toISOString().split("T")[0] };
-        setStaffMembers([newMember, ...staffMembers]);
-        setMessage({ type: "success", text: "Đã thêm nhân sự mới!" });
-        setShowAddModal(false);
+        setMessage({ type: "error", text: "Thất bại: " + (data.message || "Lỗi tạo nhân sự") });
       }
     } catch (err) {
-      const newMember = { _id: "st-" + Date.now(), ...formData, isActive: true, createdAt: new Date().toISOString().split("T")[0] };
-      setStaffMembers([newMember, ...staffMembers]);
-      setMessage({ type: "success", text: "Đã thêm nhân sự mới!" });
-      setShowAddModal(false);
+      setMessage({ type: "error", text: "Lỗi: " + err.message });
     }
   };
 
@@ -138,25 +117,15 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api
         body: JSON.stringify(editFormData)
       });
       const data = await res.json();
-      if (data.success) {
-        setStaffMembers((prev) =>
-          prev.map((s) => (s._id === selectedStaff._id ? { ...s, ...editFormData } : s))
-        );
+      if (res.ok && data.success !== false) {
         setMessage({ type: "success", text: "✏️ Cập nhật thông tin nhân sự thành công!" });
         setShowEditModal(false);
+        fetchStaff();
       } else {
-        setStaffMembers((prev) =>
-          prev.map((s) => (s._id === selectedStaff._id ? { ...s, ...editFormData } : s))
-        );
-        setMessage({ type: "success", text: "✏️ Cập nhật thông tin nhân sự thành công!" });
-        setShowEditModal(false);
+        setMessage({ type: "error", text: "Cập nhật thất bại: " + (data.message || "Lỗi") });
       }
     } catch (err) {
-      setStaffMembers((prev) =>
-        prev.map((s) => (s._id === selectedStaff._id ? { ...s, ...editFormData } : s))
-      );
-      setMessage({ type: "success", text: "✏️ Cập nhật thông tin nhân sự thành công!" });
-      setShowEditModal(false);
+      setMessage({ type: "error", text: "Lỗi: " + err.message });
     }
   };
 
@@ -167,13 +136,14 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` }
       });
-    } catch (err) {}
-
-    setStaffMembers(staffMembers.map(s => s._id === staffId ? { ...s, isActive: !currentStatus } : s));
-    setMessage({
-      type: "success",
-      text: currentStatus ? "Đã khóa tài khoản nhân sự" : "Đã mở khóa tài khoản nhân sự"
-    });
+      setMessage({
+        type: "success",
+        text: currentStatus ? "Đã khóa tài khoản nhân sự" : "Đã mở khóa tài khoản nhân sự"
+      });
+      fetchStaff();
+    } catch (err) {
+      setMessage({ type: "error", text: "Lỗi thay đổi trạng thái" });
+    }
   };
 
   const handleDeleteStaff = async (staffId) => {
@@ -184,10 +154,11 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
-    } catch (err) {}
-
-    setStaffMembers(staffMembers.filter(s => s._id !== staffId));
-    setMessage({ type: "success", text: "Đã xóa nhân sự khỏi hệ thống!" });
+      setMessage({ type: "success", text: "Đã xóa nhân sự khỏi hệ thống!" });
+      fetchStaff();
+    } catch (err) {
+      setMessage({ type: "error", text: "Lỗi xóa nhân sự" });
+    }
   };
 
   const roleBadge = (role) => {

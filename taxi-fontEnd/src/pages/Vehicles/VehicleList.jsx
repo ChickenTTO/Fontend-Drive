@@ -84,32 +84,17 @@ const VehicleFormModal = ({ isOpen, onClose, vehicle, onSave, depots = [] }) => 
         res = await vehicleApi.create(form);
       }
 
-      if (res.data?.data) {
-        onSave(res.data.data);
+      const savedData = res.data?.data || res.data;
+      if (savedData) {
+        onSave(savedData);
         alert(vehicle ? "✏️ Cập nhật thông tin xe thành công!" : "🚛 Thêm xe tải mới thành công!");
+        onClose();
       } else {
-        const fallbackVehicle = {
-          _id: vehicle?._id || ("v-" + Date.now()),
-          ...form,
-          depot: depots.find(d => d._id === form.depotId) || { name: "Bãi xe Futa Express" }
-        };
-        onSave(fallbackVehicle);
+        alert("Lỗi lưu dữ liệu từ hệ thống.");
       }
-
-      onClose();
     } catch (err) {
       const errMsg = err.response?.data?.message || err.message;
-      if (errMsg && !errMsg.includes("Network Error")) {
-        alert("Lỗi: " + errMsg);
-      } else {
-        const fallbackVehicle = {
-          _id: vehicle?._id || ("v-" + Date.now()),
-          ...form,
-          depot: depots.find(d => d._id === form.depotId) || { name: "Bãi xe Futa Express" }
-        };
-        onSave(fallbackVehicle);
-        onClose();
-      }
+      alert("Lỗi khi lưu vào Database: " + errMsg);
     } finally {
       setLoading(false);
     }
@@ -443,14 +428,13 @@ const Vehicle = ({ onViewOnMap }) => {
         depotApi.getAllDepots().catch(() => ({ data: { data: [] } }))
       ]);
 
-      if (depRes.data?.data && depRes.data.data.length > 0) setDepots(depRes.data.data);
-      else setDepots(mockDepots);
+      const realDepots = depRes.data?.data || depRes.data;
+      const realVehicles = vehRes.data?.data || vehRes.data;
 
-      if (vehRes.data?.data && vehRes.data.data.length > 0) setVehicles(vehRes.data.data);
-      else setVehicles(mockVehicles);
+      setDepots(Array.isArray(realDepots) ? realDepots : []);
+      setVehicles(Array.isArray(realVehicles) ? realVehicles : []);
     } catch (err) {
-      setDepots(mockDepots);
-      setVehicles(mockVehicles);
+      console.error("Error fetching vehicles/depots:", err);
     } finally {
       setLoading(false);
     }

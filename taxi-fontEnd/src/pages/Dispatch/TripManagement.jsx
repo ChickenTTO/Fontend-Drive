@@ -148,20 +148,13 @@ export const TripManagement = () => {
         freightTripApi.getAllTrips().catch(() => ({ data: { data: [] } }))
       ]);
 
-      if (depRes.data?.data && depRes.data.data.length > 0) {
-        setDepots(depRes.data.data);
-      } else {
-        setDepots(mockDepots);
-      }
+      const realDepots = depRes.data?.data || depRes.data;
+      const realTrips = tripRes.data?.data || tripRes.data;
 
-      if (tripRes.data?.data && tripRes.data.data.length > 0) {
-        setTrips(tripRes.data.data);
-      } else {
-        setTrips(mockTrips);
-      }
+      setDepots(Array.isArray(realDepots) ? realDepots : []);
+      setTrips(Array.isArray(realTrips) ? realTrips : []);
     } catch (err) {
-      setDepots(mockDepots);
-      setTrips(mockTrips);
+      console.error("Error fetching trips/depots:", err);
     } finally {
       setLoading(false);
     }
@@ -240,47 +233,16 @@ export const TripManagement = () => {
     try {
       setLoading(true);
       const res = await freightTripApi.createTrip(formData);
-      if (res.data?.success) {
-        setMessage({ type: "success", text: `Đã lưu Chuyến đi [${res.data.data.tripCode}] thành công!` });
-        setShowCreateModal(false);
-        fetchInitialData();
-      } else {
-        createLocalFallbackTrip();
-      }
+      const tripCode = res.data?.data?.tripCode || formData.tripCode;
+      setMessage({ type: "success", text: `Đã lưu Chuyến đi [${tripCode}] thành công vào Database!` });
+      setShowCreateModal(false);
+      fetchInitialData();
     } catch (err) {
-      createLocalFallbackTrip();
+      const errMsg = err.response?.data?.message || err.message;
+      setMessage({ type: "error", text: "Lỗi lưu chuyến đi: " + errMsg });
     } finally {
       setLoading(false);
     }
-  };
-
-  const createLocalFallbackTrip = () => {
-    const startObj = depots.find(d => d._id === formData.startDepotId);
-    const endObj = depots.find(d => d._id === formData.endDepotId);
-
-    const newTrip = {
-      _id: "t-" + Date.now(),
-      tripCode: formData.tripCode || ("FUTA-TRIP-" + Math.floor(100 + Math.random() * 900)),
-      status: "Đang chờ",
-      customerName: formData.customerName || "Khách hàng Futa Express",
-      customerPhone: formData.customerPhone || "0900000000",
-      cargoType: formData.cargoType,
-      cargoWeightTon: formData.cargoWeightTon,
-      fare: formData.fare,
-      distance: formData.distance,
-      startDepot: { _id: startObj?._id, name: startObj?.name || "Bãi xe đi", code: startObj?.code || "GO" },
-      startLocation: formData.startLocation,
-      endDepot: { _id: endObj?._id, name: endObj?.name || "Bãi xe đến", code: endObj?.code || "ARR" },
-      endLocation: formData.endLocation,
-      startTime: formData.startTime.replace("T", " "),
-      estimatedEndTime: formData.estimatedEndTime.replace("T", " "),
-      createdAt: new Date().toISOString().replace("T", " ").substring(0, 16),
-      notes: formData.notes
-    };
-
-    setTrips([newTrip, ...trips]);
-    setMessage({ type: "success", text: `✅ Đã lưu Chuyến đi [${newTrip.tripCode}] thành công! Chuyến đang ở trạng thái "Đang chờ".` });
-    setShowCreateModal(false);
   };
 
   const handleSaveEditTrip = async (e) => {
@@ -289,78 +251,30 @@ export const TripManagement = () => {
 
     try {
       setLoading(true);
-      const res = await freightTripApi.updateTrip(selectedTrip._id, formData);
-      if (res.data?.success) {
-        setMessage({ type: "success", text: `✏️ Đã cập nhật thành công thông tin chuyến đi [${selectedTrip.tripCode}]!` });
-        setShowEditModal(false);
-        fetchInitialData();
-      } else {
-        updateLocalFallbackTrip();
-      }
+      await freightTripApi.updateTrip(selectedTrip._id, formData);
+      setMessage({ type: "success", text: `✏️ Đã cập nhật thành công thông tin chuyến đi [${selectedTrip.tripCode}]!` });
+      setShowEditModal(false);
+      fetchInitialData();
     } catch (err) {
-      updateLocalFallbackTrip();
+      const errMsg = err.response?.data?.message || err.message;
+      setMessage({ type: "error", text: "Lỗi cập nhật chuyến đi: " + errMsg });
     } finally {
       setLoading(false);
     }
-  };
-
-  const updateLocalFallbackTrip = () => {
-    const startObj = depots.find(d => d._id === formData.startDepotId);
-    const endObj = depots.find(d => d._id === formData.endDepotId);
-
-    setTrips(trips.map(t => {
-      if (t._id === selectedTrip._id) {
-        return {
-          ...t,
-          customerName: formData.customerName,
-          customerPhone: formData.customerPhone,
-          cargoType: formData.cargoType,
-          cargoWeightTon: formData.cargoWeightTon,
-          fare: formData.fare,
-          distance: formData.distance,
-          startLocation: formData.startLocation,
-          endLocation: formData.endLocation,
-          startDepot: startObj ? { _id: startObj._id, name: startObj.name, code: startObj.code, city: startObj.city } : t.startDepot,
-          endDepot: endObj ? { _id: endObj._id, name: endObj.name, code: endObj.code, city: endObj.city } : t.endDepot,
-          status: formData.status,
-          startTime: formData.startTime.replace("T", " "),
-          estimatedEndTime: formData.estimatedEndTime.replace("T", " "),
-          notes: formData.notes,
-          cancelReason: formData.status === "Đã hủy" ? (formData.cancelReason || "Đã hủy bởi điều hành viên") : t.cancelReason
-        };
-      }
-      return t;
-    }));
-
-    setMessage({ type: "success", text: `✏️ Đã cập nhật thành công thông tin chuyến đi [${selectedTrip.tripCode}]!` });
-    setShowEditModal(false);
   };
 
   const handleConfirmCancel = async (reason) => {
     if (!selectedTrip) return;
     try {
       setLoading(true);
-      await freightTripApi.cancelTrip(selectedTrip._id).catch(() => null);
-
-      setTrips(prev => prev.map(t => t._id === selectedTrip._id ? {
-        ...t,
-        status: "Đã hủy",
-        cancelReason: reason
-      } : t));
-
+      await freightTripApi.cancelTrip(selectedTrip._id);
       setMessage({ type: "success", text: `🚫 Đã HỦY chuyến đi [${selectedTrip.tripCode}] thành công! Lý do: ${reason}` });
       setShowCancelModal(false);
       setShowDetailModal(false);
+      fetchInitialData();
     } catch (err) {
-      setTrips(prev => prev.map(t => t._id === selectedTrip._id ? {
-        ...t,
-        status: "Đã hủy",
-        cancelReason: reason
-      } : t));
-
-      setMessage({ type: "success", text: `🚫 Đã HỦY chuyến đi [${selectedTrip.tripCode}] thành công! Lý do: ${reason}` });
-      setShowCancelModal(false);
-      setShowDetailModal(false);
+      const errMsg = err.response?.data?.message || err.message;
+      setMessage({ type: "error", text: "Lỗi hủy chuyến đi: " + errMsg });
     } finally {
       setLoading(false);
     }

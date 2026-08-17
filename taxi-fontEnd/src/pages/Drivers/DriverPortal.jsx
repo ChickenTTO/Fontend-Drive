@@ -139,13 +139,9 @@ export const DriverPortal = () => {
         );
       });
 
-      if (myTrips.length > 0) {
-        setDriverTrips(myTrips);
-      } else {
-        setDriverTrips(defaultMockTrips);
-      }
+      setDriverTrips(myTrips.length > 0 ? myTrips : combined);
     } catch (err) {
-      setDriverTrips(defaultMockTrips);
+      console.error("Error fetching driver trips:", err);
     } finally {
       setLoadingTrips(false);
     }

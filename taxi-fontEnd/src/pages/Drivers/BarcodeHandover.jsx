@@ -22,6 +22,20 @@ export const BarcodeHandover = ({ initialBarcode, initialType, tripToHandover, o
     tires: "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?auto=format&fit=crop&w=800&q=80"
   });
 
+  const handleFileChange = (photoKey, e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotos(prev => ({
+          ...prev,
+          [photoKey]: reader.result
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   useEffect(() => {
     if (initialBarcode) {
       setBarcodeInput(initialBarcode);
@@ -282,18 +296,46 @@ export const BarcodeHandover = ({ initialBarcode, initialType, tripToHandover, o
                 📸 Bắt buộc 03 Ảnh Chụp Hiện Trạng Phương Tiện (Minh bạch tài sản):
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                <div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>1. Cabin xe</div>
-                  <img src={photos.cabin} alt="Cabin" style={{ width: "100%", height: 85, objectFit: "cover", borderRadius: 6, border: "1px solid #e2e8f0" }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>2. Thùng xe</div>
-                  <img src={photos.cargoBox} alt="Cargo Box" style={{ width: "100%", height: 85, objectFit: "cover", borderRadius: 6, border: "1px solid #e2e8f0" }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>3. Lốp xe</div>
-                  <img src={photos.tires} alt="Tires" style={{ width: "100%", height: 85, objectFit: "cover", borderRadius: 6, border: "1px solid #e2e8f0" }} />
-                </div>
+                {[
+                  { key: "cabin", label: "1. Cabin xe" },
+                  { key: "cargoBox", label: "2. Thùng xe" },
+                  { key: "tires", label: "3. Lốp xe" }
+                ].map((item) => (
+                  <div key={item.key} style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#475569", marginBottom: 3 }}>{item.label}</div>
+                    <div style={{ position: "relative", overflow: "hidden", borderRadius: 6, border: "1px solid #cbd5e1", background: "#f8fafc" }}>
+                      <img
+                        src={photos[item.key]}
+                        alt={item.label}
+                        style={{ width: "100%", height: 85, objectFit: "cover", display: "block" }}
+                      />
+                    </div>
+                    <label style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 4,
+                      marginTop: 6,
+                      width: "100%",
+                      padding: "5px 6px",
+                      background: "#eff6ff",
+                      color: "#2563eb",
+                      border: "1px solid #bfdbfe",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer"
+                    }}>
+                      📁 Tải ảnh từ máy
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={(e) => handleFileChange(item.key, e)}
+                      />
+                    </label>
+                  </div>
+                ))}
               </div>
             </div>
 

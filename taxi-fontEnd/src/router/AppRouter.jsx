@@ -163,22 +163,8 @@ const AppRouter = ({
         }
       />
 
-      {/* Quản lý tài xế */}
-      <Route
-        path="/drivers"
-        element={
-          <PrivateRoute roles={ADMIN_DISPATCHER}>
-            <DriverList
-              drivers={drivers}
-              setDrivers={setDrivers}
-              vehicles={vehicles}
-              setVehicles={setVehicles}
-              onViewOnMap={handleViewVehicleOnMap}
-              reports={reports}
-            />
-          </PrivateRoute>
-        }
-      />
+      {/* Redirect /drivers sang /staff (Quản lý nhân sự) */}
+      <Route path="/drivers" element={<Navigate to="/staff" replace />} />
 
       {/* Quản lý Bãi xe */}
       <Route

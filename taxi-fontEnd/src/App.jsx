@@ -74,12 +74,6 @@ const NAV_ITEMS = [
     roles: [ROLES.ADMIN, ROLES.DISPATCHER],
   },
   {
-    to: "/drivers",
-    tab: "drivers",
-    label: "Quản lý Tài xế",
-    roles: [ROLES.ADMIN, ROLES.DISPATCHER],
-  },
-  {
     to: "/driver-portal",
     tab: "active-vehicles",
     label: "Cổng Tài xế (Nhận/Giao xe)",

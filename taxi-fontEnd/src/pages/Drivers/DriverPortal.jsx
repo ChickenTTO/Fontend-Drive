@@ -249,6 +249,17 @@ export const DriverPortal = () => {
     }
   };
 
+  const handleExpenseFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewExpense(prev => ({ ...prev, receiptImage: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddExpense = (e) => {
     e.preventDefault();
     const created = {
@@ -807,9 +818,73 @@ export const DriverPortal = () => {
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Ảnh Hóa đơn / Biên lai minh chứng</label>
-                  <img src={newExpense.receiptImage} alt="Receipt preview" style={{ width: "100%", height: 100, objectFit: "cover", borderRadius: 6, marginBottom: 6 }} />
-                  <span style={{ fontSize: 11, color: "#64748b" }}>* Ảnh mẫu tự động gắn kèm chứng minh</span>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>📸 Ảnh Hóa đơn / Biên lai minh chứng</label>
+                  
+                  <label style={{ display: "block", position: "relative", marginBottom: 10, cursor: "pointer" }} title="Bấm để chọn ảnh từ máy tính">
+                    <img
+                      src={newExpense.receiptImage}
+                      alt="Receipt preview"
+                      style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, border: "2px dashed #bfdbfe", display: "block" }}
+                    />
+                    <div style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: "rgba(15, 23, 42, 0.3)",
+                      borderRadius: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#ffffff",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      backdropFilter: "blur(1px)",
+                      opacity: 0,
+                      transition: "opacity 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                    onMouseLeave={(e) => e.currentTarget.style.opacity = "0"}
+                    >
+                      📷 Bấm vào đây để chọn file ảnh
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={handleExpenseFileChange}
+                    />
+                  </label>
+
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <label style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "7px 14px",
+                      background: "#2563eb",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(37,99,235,0.2)"
+                    }}>
+                      📁 Chọn File Ảnh Từ Máy Tính
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={handleExpenseFileChange}
+                      />
+                    </label>
+                    <input
+                      type="text"
+                      value={newExpense.receiptImage}
+                      onChange={(e) => setNewExpense({ ...newExpense, receiptImage: e.target.value })}
+                      placeholder="Hoặc dán URL..."
+                      style={{ flex: 1, padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 12, color: "#475569" }}
+                    />
+                  </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>

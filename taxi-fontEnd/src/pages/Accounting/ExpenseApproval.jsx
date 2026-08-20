@@ -1,20 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { expenseApi } from "../../api/handoverApi";
-import { freightTripApi } from "../../api/freightTripApi";
 
 export const ExpenseApproval = () => {
   const [expenses, setExpenses] = useState([]);
-  const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
-
-  // Form claim state for drivers
-  const [showClaimForm, setShowClaimForm] = useState(false);
-  const [selectedTripId, setSelectedTripId] = useState("");
-  const [expenseType, setExpenseType] = useState("Phí trạm BOT");
-  const [amount, setAmount] = useState(150000);
-  const [description, setDescription] = useState("Phí BOT qua trạm Phan Thiết");
-  const [receiptImage, setReceiptImage] = useState("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80");
 
   // Rejection modal state
   const [rejectingId, setRejectingId] = useState(null);
@@ -25,7 +15,6 @@ export const ExpenseApproval = () => {
 
   useEffect(() => {
     fetchExpenses();
-    fetchTrips();
   }, []);
 
   const fetchExpenses = async () => {
@@ -37,47 +26,6 @@ export const ExpenseApproval = () => {
       }
     } catch (err) {
       console.error("Error fetching expenses:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTrips = async () => {
-    try {
-      const res = await freightTripApi.getAllTrips();
-      if (res.data?.data) {
-        setTrips(res.data.data);
-        if (res.data.data.length > 0) setSelectedTripId(res.data.data[0]._id);
-      }
-    } catch (err) {
-      console.error("Error fetching trips:", err);
-    }
-  };
-
-  const handleCreateClaim = async (e) => {
-    e.preventDefault();
-    if (!selectedTripId || !amount || !receiptImage) {
-      setMessage({ type: "error", text: "Vui lòng chọn chuyến xe, nhập số tiền và đính kèm ảnh hóa đơn!" });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const res = await expenseApi.createExpense({
-        tripId: selectedTripId,
-        type: expenseType,
-        amount: Number(amount),
-        description,
-        receiptImage
-      });
-
-      if (res.data?.success) {
-        setMessage({ type: "success", text: res.data.message });
-        setShowClaimForm(false);
-        fetchExpenses();
-      }
-    } catch (err) {
-      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi gửi chi phí hoàn ứng" });
     } finally {
       setLoading(false);
     }
@@ -119,30 +67,13 @@ export const ExpenseApproval = () => {
 
   return (
     <div style={{ padding: 16, color: "#1e293b" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "#0f172a" }}>
-            🧾 Khai Báo & Đối Soát Chi Phí Đường Trường Futa Express
-          </h1>
-          <p style={{ color: "#64748b", fontSize: 13, marginTop: 4, margin: 0 }}>
-            Tài xế đệ trình chi phí hoàn ứng dọc đường (BOT, Xăng dầu) kèm ảnh hóa đơn ➔ Kế toán đối soát & duyệt trực tuyến.
-          </p>
-        </div>
-
-        <button
-          onClick={() => setShowClaimForm(!showClaimForm)}
-          style={{
-            padding: "9px 16px",
-            background: "#f97316",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            fontWeight: 700,
-            cursor: "pointer"
-          }}
-        >
-          {showClaimForm ? "Đóng Form" : "➕ Tài Xế Đệ Trình Chi Phí"}
-        </button>
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "#0f172a" }}>
+          🧾 Phê Duyệt & Đối Soát Chi Phí Đường Trường Futa Express
+        </h1>
+        <p style={{ color: "#64748b", fontSize: 13, marginTop: 4, margin: 0 }}>
+          Kế toán kiểm tra, đối soát và phê duyệt trực tuyến các khoản chi phí hoàn ứng (BOT, Xăng dầu) do tài xế đệ trình.
+        </p>
       </div>
 
       {message && (
@@ -156,84 +87,6 @@ export const ExpenseApproval = () => {
         }}>
           {message.text}
         </div>
-      )}
-
-      {/* Driver Claim Form Modal */}
-      {showClaimForm && (
-        <form onSubmit={handleCreateClaim} style={{ background: "#ffffff", padding: 18, borderRadius: 10, border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", marginBottom: 20 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 14, color: "#ea580c" }}>
-            ⛽ Yêu Cầu Hoàn ứng Chi Phí Đường Trường
-          </h3>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
-            <div>
-              <label style={{ fontSize: 13, color: "#475569", fontWeight: 600, display: "block", marginBottom: 4 }}>Chọn Chuyến Xe phát sinh</label>
-              <select
-                value={selectedTripId}
-                onChange={(e) => setSelectedTripId(e.target.value)}
-                style={{ width: "100%", padding: "8px 12px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 6, color: "#0f172a" }}
-              >
-                {trips.map((t) => (
-                  <option key={t._id} value={t._id}>[{t.tripCode}] {t.startDepot?.name} ➔ {t.endDepot?.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 13, color: "#475569", fontWeight: 600, display: "block", marginBottom: 4 }}>Loại Chi phí</label>
-              <select
-                value={expenseType}
-                onChange={(e) => setExpenseType(e.target.value)}
-                style={{ width: "100%", padding: "8px 12px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 6, color: "#0f172a" }}
-              >
-                <option value="Xăng dầu">⛽ Xăng dầu / Dầu Diesel</option>
-                <option value="Phí trạm BOT">🛣️ Phí trạm BOT</option>
-                <option value="Sửa chữa nhỏ / Vá lốp">🔧 Sửa chữa nhỏ / Vá lốp</option>
-                <option value="Chi phí khác">📝 Chi phí khác</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 13, color: "#475569", fontWeight: 600, display: "block", marginBottom: 4 }}>Số tiền hoàn ứng (VND)</label>
-              <input
-                type="number"
-                step="10000"
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                style={{ width: "100%", padding: "8px 12px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 6, color: "#0f172a" }}
-              />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, color: "#475569", fontWeight: 600, display: "block", marginBottom: 4 }}>Mô tả chi tiết</label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="VD: Phí trạm BOT Phan Thiết cho xe tải 7.5t..."
-              style={{ width: "100%", padding: "8px 12px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 6, color: "#0f172a" }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 13, color: "#475569", fontWeight: 600, display: "block", marginBottom: 4 }}>📸 URL Ảnh Hóa đơn / Biên lai giấy</label>
-            <input
-              type="text"
-              value={receiptImage}
-              onChange={(e) => setReceiptImage(e.target.value)}
-              style={{ width: "100%", padding: "8px 12px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 6, color: "#0f172a" }}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ padding: "9px 20px", background: "#16a34a", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
-          >
-            {loading ? "Đang gửi..." : "Gửi Đệ Trình Cho Kế Toán Phê Duyệt"}
-          </button>
-        </form>
       )}
 
       {/* Expenses Table */}

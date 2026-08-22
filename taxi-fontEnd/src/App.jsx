@@ -101,11 +101,7 @@ const ROLE_LABELS = {
   [ROLES.DRIVER]: "Tài xế",
 };
 
-// ─── Mock data defaults ──────────────────────────────────────────────────────
-const MOCK_VEHICLES = [];
-const MOCK_DRIVERS = [];
-const MOCK_REPORTS = [];
-const MOCK_CUSTOMERS = [];
+import { MOCK_VEHICLES, MOCK_DRIVERS, MOCK_REPORTS, MOCK_CUSTOMERS } from "./constants";
 
 // ─── App ─────────────────────────────────────────────────────────────────────
 const App = () => {
